@@ -363,6 +363,7 @@ namespace BL23.Sim
                 n.Anger = MathX.Clamp01(n.Anger - 1f / 300f);
                 if (a.Wet && S.Clock > a.WetUntil) a.Wet = false;
             }
+            if (mod == 6 * 60) Factions.Morning(this);
             if (mod == 7 * 60) { Announce("y_morning", null); Hunger.Morning(this); HousePush.Bell(this, false); }
             if (mod == 21 * 60) HousePush.Bell(this, true);
             if (mod == 22 * 60) Announce("y_night", null);

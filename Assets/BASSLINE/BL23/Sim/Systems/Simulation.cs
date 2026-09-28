@@ -137,6 +137,7 @@ namespace BL23.Sim
             int n = S.Survivors;
             S.Ch = new ChapterState { StartN = n, ChapterStartClock = S.Clock };
             Conscience.OnChapter(this);
+            Factions.Compute(this);
             // the loop's first chapter holds one case: the first killing is the one everyone remembers (a second one the same
             // afternoon, once the house had worn every wall at once, read as a flood rather than a turn)
             S.Ch.VictimCap = n >= 7 ? (S.Chapter <= 1 ? 1 : 2) : (n >= 4 ? 1 : 0);

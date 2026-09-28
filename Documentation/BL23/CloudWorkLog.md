@@ -203,3 +203,9 @@ dotnet run -c Release -- voice lint out.txt       # 보이스 팩 위반 0
 - 2026-09-28: 네 인물 성격, 수위 해제, 토론 다듬기 (`da973de`); .meta (`ba05ac0`); 초대장 전제와 약속 (`c6f7494`); 벽·저택 사다리·식탁 버그 수정 (`c15bd2a`)
 - 2026-09-28: 공정성 은판 — 목격자가 본 "범행 전 흉기를 든 범인"과 "범행 뒤 옷에 핏자국이 있는 범인"을 은판으로 올리고, 목격 은판 상한과 무관하게 최대 2장 싣는다 (`DeckBuild.cs` `FeedCulpritSeen`). 도윤 사건의 촛불 대결이 0/4에서 4/4가 됐다.
 - 2026-09-28: 1챕터 문턱 — 저택이 첫 두 단계(견본·봉투)를 밟기 전에는 벽 +0.15씩 (`Conscience.Unpushed`). 1챕터 희생자 한도 1명 (`Simulation.BeginChapter`). 측정: 첫 살인 3~6일차(시드 5개), 1챕터 한 사건, 긴 침묵으로 정지 없음.
+- 2026-09-28: 속내 장면(민혁이 흔들린 사람을 붙잡음)과 독살·진정제 공정성 은판 (`0cff02e`). 설계: 파벌·모임·저택 행사 (`SocialEventsDesign.md`, `04dab9b`).
+- 2026-09-28: **SocialEventsDesign §6 1단계 — 파벌.**
+  - 매일 06:00과 챕터 시작에 관계 그래프로 무리를 만든다. 리더·경쟁 무리·외톨이가 정해진다.
+  - 적용된 곳: 초대 대상과 수락, 무리 안 관계 흐름, 외톨이 긴장, 심판에서 무리원 보호, 리더 쪽으로 기우는 투표, 식탁 주제 「무리」.
+  - 파일: `Sim/Life/Factions.cs`, `Sim/Content/Lines_Social.cs`, `GameState.Factions`, `Grammars.WouldAccept/Host`, `LifeTable`, `DebateEngine.Protects/DebateVoteOf`.
+  - 다음은 2단계, 저택 행사다.

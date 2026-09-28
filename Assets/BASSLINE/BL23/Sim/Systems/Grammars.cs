@@ -376,7 +376,8 @@ namespace BL23.Sim
             if ((int)Math.Floor(start % 1440) > 22 * 60) return;
             var g = new Gathering { Id = S.NewId("gath"), Host = host.Id, Kind = kind.kind, Label = kind.label };
             g.Revs.Add(new GatheringRev { Room = room.Id, Start = start, End = end, At = S.Clock, Why = "처음 초대" });
-            var guests = S.Living.Where(x => x != host && !x.IsButler && S.R(host.Id, x.Id).Opinion > (x.IsPlayer ? 0.08 : 0.12)).OrderByDescending(x => S.R(host.Id, x.Id).Opinion + rng.F() * 0.3).Take(2 + rng.R(4)).ToList();
+            // one's own faction first, then whoever the host likes
+            var guests = S.Living.Where(x => x != host && !x.IsButler && (S.R(host.Id, x.Id).Opinion > (x.IsPlayer ? 0.08 : 0.12) || Factions.Together(S, host.Id, x.Id))).OrderByDescending(x => S.R(host.Id, x.Id).Opinion + (Factions.Together(S, host.Id, x.Id) ? 0.5 : 0) + rng.F() * 0.3).Take(2 + rng.R(4)).ToList();
             if (guests.Count == 0) return;
             foreach (var x in guests) { g.Status[x.Id] = "unaware"; g.KnownRev[x.Id] = -1; g.Channel[x.Id] = x.IsPlayer || S.R(host.Id, x.Id).Like < 0.3f || rng.Chance(0.5) ? "note" : "voice"; }
             g.Status[host.Id] = "host"; g.KnownRev[host.Id] = 0;
@@ -419,6 +420,7 @@ namespace BL23.Sim
             var S = sim.S; if (x.IsPlayer) return true;
             var r = S.R(x.Id, g.Host);
             double score = r.Opinion * 1.4 + x.Def.P.Sociability * 0.5 - x.Needs.Fear * 0.8 - x.Needs.Stress * 0.3 + (S.Chapter > 1 ? -0.1 : 0);
+            score += Factions.InviteBias(S, x.Id, g);   // one's own faction's evening, a rival leader's, where one's leader goes
             // a schemer counts heads: a crowd is either a cover or an obstacle
             if (x.PlanId != null && S.Plans.TryGetValue(x.PlanId, out var pl) && pl.Grammar == "Gathering") score += 1;
             return score > 0.15;

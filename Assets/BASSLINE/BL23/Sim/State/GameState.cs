@@ -45,6 +45,7 @@ namespace BL23.Sim
         // everyday grammars (IG01-12 + BL23 trick extensions) — see Systems/Grammars.cs, Systems/Tricks.cs
         public List<Loan> Loans = new List<Loan>();
         public List<Gathering> Gatherings = new List<Gathering>();
+        public List<Faction> Factions = new List<Faction>();   // who holds together (Sim/Life/Factions.cs), recomputed each morning
         public List<Request> Requests = new List<Request>();   // personal invitations and favours to 민혁 (Systems/Requests.cs)
         public List<Trap> Traps = new List<Trap>();
         public List<DeviceRecord> DeviceLog = new List<DeviceRecord>();

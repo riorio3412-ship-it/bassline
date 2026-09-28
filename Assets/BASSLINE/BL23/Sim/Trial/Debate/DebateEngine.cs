@@ -170,7 +170,7 @@ namespace BL23.Sim
         internal static List<string> Jurors(GameState S, TrialState T) => T.Participants.Where(x => x != Cast.Player && S.A(x)?.Alive == true).OrderBy(x => x, StringComparer.Ordinal).ToList();
         internal static double DH(GameState S, string key) => MurderHash.U01(S, "debate:" + key);
         internal static Rel RelOf(GameState S, string a, string b) => a != null && b != null && S.HasRel(a, b) ? S.R(a, b) : null;
-        internal static bool Protects(GameState S, string a, string b) { var r = RelOf(S, a, b); return r != null && (r.Attach > 0.55f || r.Tags.Contains("family") || r.Tags.Contains("lover")); }
+        internal static bool Protects(GameState S, string a, string b) { var r = RelOf(S, a, b); return r != null && (r.Attach > 0.55f || r.Tags.Contains("family") || r.Tags.Contains("lover")) || (Factions.Together(S, a, b) && Factions.Affinity(S, a, b) >= 0.25f); }
         internal static bool Resents(GameState S, string a, string b) { var r = RelOf(S, a, b); return r != null && (r.Grudge > 0.25f || r.Fear > 0.3f || r.Tags.Contains("grudge") || r.Tags.Contains("enemy")); }
 
         // ================================================================== the director
@@ -464,6 +464,8 @@ namespace BL23.Sim
                 if (x == D.Accused) { var r = RelOf(S, j, Cast.Player); u += Math.Min(1.5, 0.5 + (r != null ? (r.Trust + r.Respect) : 0) + T.Influence * 0.5); }
                 if (D.Reading.TryGetValue(j, out var rd) && rd == x) u += 1.2;
                 if (D.Initial.TryGetValue(j, out var ini) && ini == x) u += 0.2;
+                // a faction leans the way its leader reads it
+                var lead = Factions.Of(S, j)?.Leader; if (lead != null && lead != j && D.Reading.TryGetValue(lead, out var lr) && lr == x) u += 0.4;
                 if (Protects(S, j, x)) u -= 9;
                 score[x] = u;
             }

@@ -79,6 +79,13 @@ public static partial class Program
                 var walls = S.LivingNpcs.OrderBy(a => a.Id, StringComparer.Ordinal).Select(a => $"{Who(a.Id)} {Conscience.Wall(S, a.Id):0.00}/{Conscience.Inhibit(S, a):0.00}");
                 Console.WriteLine($"-- {ClockFmt.DayHM(S.Clock)} L{S.Loop}C{S.Chapter} alive {S.Living.Count()} hunger {Hunger.Level(S)} push {HousePush.Next(S)} pact {(Conscience.PactBroken(S) ? "broken" : "kept")}");
                 Console.WriteLine("   wall/inhibit: " + string.Join(", ", walls));
+                Console.WriteLine("   factions: " + Factions.Describe(S) + " · left out: " + string.Join(",", S.LivingNpcs.Where(x => Factions.LeftOut(S, x.Id)).Select(x => Who(x.Id))));
+                {
+                    var ids = S.LivingNpcs.Select(x => x.Id).OrderBy(x => x, StringComparer.Ordinal).ToList(); var all = new List<(string, float)>();
+                    for (int i = 0; i < ids.Count; i++) for (int j = i + 1; j < ids.Count; j++) all.Add((Who(ids[i]) + "-" + Who(ids[j]), Factions.Affinity(S, ids[i], ids[j])));
+                    var sorted = all.OrderByDescending(x => x.Item2).ToList();
+                    Console.WriteLine("   affinity top: " + string.Join(", ", sorted.Take(10).Select(x => $"{x.Item1} {x.Item2:0.00}")) + $" · median {sorted[sorted.Count / 2].Item2:0.00} · bottom {sorted.Last().Item2:0.00}");
+                }
             }
             // someone comes to confide (HousePush → LifeDialogue "confide"): 민혁 hears them out and answers
             if (S.Phase == Phase.Daily && S.Player != null && S.Player.Alive && m >= 8 * 60 && m <= 22 * 60 && m % 5 == 0)
