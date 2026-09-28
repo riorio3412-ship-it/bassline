@@ -167,16 +167,21 @@ namespace BL23.Sim
             // special voices for a death: 준서 counts the spoons, 은결 lays a lily on the chair
             if (kind == "death")
             {
-                // the chapter's first death breaks its pact: the one who asked for it (or another who took it) says so
-                if (S.Flags.ContainsKey($"ltpact:{S.Loop}:{S.Chapter}") && !S.Flags.ContainsKey($"ltpactbroken:{S.Loop}:{S.Chapter}"))
+                // the first death of a chapter breaks that chapter's pact (the table often sits after its 심판, in the next chapter):
+                // the one who asked for it — or another who took it — says so
+                int pc = S.Incidents.Values.Where(i => i.Victim == subject && i.Loop == S.Loop).Select(i => i.Chapter).DefaultIfEmpty(S.Chapter).First();
+                if (S.Flags.ContainsKey($"ltpact:{S.Loop}:{pc}") && !S.Flags.ContainsKey($"ltpactbroken:{S.Loop}:{pc}"))
                 {
-                    S.Flags[$"ltpactbroken:{S.Loop}:{S.Chapter}"] = S.Clock;
-                    string keeper = new[] { "P03", "P05", "P10", "P12" }.FirstOrDefault(x => diners.Contains(x) && x != owner && Conscience.TookPact(S, x))
-                                 ?? diners.Where(d => d != owner && Conscience.TookPact(S, d)).OrderBy(d => d, StringComparer.Ordinal).FirstOrDefault();
+                    S.Flags[$"ltpactbroken:{S.Loop}:{pc}"] = S.Clock;
+                    // (준서 and 은결 have their own words at a death table — the spoons, the lily — so they speak for the pact last)
+                    string keeper = new[] { "P03", "P05", "P12" }.FirstOrDefault(x => diners.Contains(x) && x != owner && Conscience.TookPact(S, x, pc))
+                                 ?? diners.Where(d => d != owner && d != "P10" && d != "P14" && Conscience.TookPact(S, d, pc)).OrderBy(d => d, StringComparer.Ordinal).FirstOrDefault()
+                                 ?? new[] { "P10", "P14" }.FirstOrDefault(x => diners.Contains(x) && x != owner && Conscience.TookPact(S, x, pc));
                     if (keeper != null) beat.Lines.Add(KeyLine(keeper, owner, "pact_broken", Emotion.Sad));
                 }
-                if (diners.Contains("P10") && owner != "P10") beat.Lines.Add(KeyLine("P10", owner, "tt_spoons", Emotion.Sad));
-                if (diners.Contains("P14") && owner != "P14") beat.Lines.Add(KeyLine("P14", owner, "tt_lily", Emotion.Sad));
+                bool spoke(string who) => beat.Lines.Any(l => l != null && l.Who == who);
+                if (diners.Contains("P10") && owner != "P10" && !spoke("P10")) beat.Lines.Add(KeyLine("P10", owner, "tt_spoons", Emotion.Sad));
+                if (diners.Contains("P14") && owner != "P14" && !spoke("P14")) beat.Lines.Add(KeyLine("P14", owner, "tt_lily", Emotion.Sad));
             }
             // the other party of a quarrel answers first
             if (kind == "conflict" && diners.Contains(a)) beat.Lines.Add(KeyLine(a, owner, "argue_reply", Emotion.Angry));

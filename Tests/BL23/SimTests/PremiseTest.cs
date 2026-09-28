@@ -87,7 +87,7 @@ public static partial class Program
                 var din = S.Layout.First(RoomType.Dining); if (din == null) continue;
                 if (S.Player.Room != din.Id) { var p = sim.RandomPointIn(din, S.R(Stream.Presentation)); sim.SetPlayerPose(p, 0, false, false); }
                 var diners = S.LivingNpcs.Where(x => x.Room == din.Id && x.Status == ActorStatus.Active && (x.Anim == Anim.Eat || x.Pose == Pose.Sit) && x.TalkingTo == null).OrderBy(x => x.Id).Select(x => x.Id).ToList();
-                if (diners.Count < 3) continue;
+                if (diners.Count < 3 || (diners.Count < 4 && m < (meal == "breakfast" ? Simulation.MealStart[0] : Simulation.MealStart[2]) + 20)) continue;
                 S.Flags[$"pttable:{S.Day}:{meal}"] = S.Clock;
                 var st = sim.LifeTable(diners.Take(7).ToList(), meal);
                 if (st != null) { Console.WriteLine($"   [{ClockFmt.DayHM(S.Clock)}] 식탁 「{st.Title}」 ({string.Join(",", diners.Select(Who))}) lines={st.Lines.Count} opts={st.Options?.Count ?? 0} done={st.Done}"); Print(st); }

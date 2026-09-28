@@ -243,6 +243,8 @@ namespace BL23.Sim
                     slots[kv.Key] = v;
                 }
             slots["nick"] = LifeNick(speaker);
+            // nobody addresses themselves: a scene's {t} that is the speaker (the other side of a table quarrel answering) is the listener
+            if (listener != null && slots.TryGetValue("t", out var tv) && tv == "@" + speaker) slots["t"] = "@" + listener;
             string used = key, text = null;
             // a key this speaker lacks: the nearest everyday key in their OWN voice beats the shared line
             if (!LineBank.Has(speaker, key) && !LineBank.HasSuffixed(speaker, key, '@') && KeyFallback.TryGetValue(key, out var alts))

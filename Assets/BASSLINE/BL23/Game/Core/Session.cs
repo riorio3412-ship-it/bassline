@@ -405,7 +405,9 @@ namespace BL23.Game
             int m = S.Minute; string meal = m >= 7 * 60 && m < 10 * 60 ? "breakfast" : m >= 12 * 60 && m < 14 * 60 ? "lunch" : m >= 18 * 60 && m < 21 * 60 ? "dinner" : null; if (meal == null) return;
             string key = $"tabletalk:{S.Day}:{meal}"; if (S.Flags.ContainsKey(key)) return;
             var diners = S.LivingNpcs.Where(x => x.Room == room.Id && x.Status == ActorStatus.Active && (x.Anim == Anim.Eat || x.Pose == BL23.Sim.Pose.Sit) && x.TalkingTo == null).OrderBy(x => x.Id).Select(x => x.Id).ToList();
-            if (diners.Count < 3) return;
+            // a fuller table: wait for four, or for three once the meal has run twenty minutes
+            int start = meal == "breakfast" ? Simulation.MealStart[0] : meal == "dinner" ? Simulation.MealStart[2] : 12 * 60 + 30;
+            if (diners.Count < 3 || (diners.Count < 4 && m < start + 20)) return;
             S.Flags[key] = S.Clock;
             Cine.TableTalk(diners.Take(7).ToList(), meal);   // up to seven at the table: the long table scenes (pact, the house's pushes)
         }

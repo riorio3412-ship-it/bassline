@@ -61,7 +61,8 @@ namespace BL23.Sim
         /// <summary>How far past the wall the house's pressure can reach into a resident's own restraint (a long silence).</summary>
         public const float Floor = -0.3f;
 
-        public static bool TookPact(GameState S, string id) => S.Flags.ContainsKey($"pact:{S.Loop}:{S.Chapter}:{id}");
+        public static bool TookPact(GameState S, string id) => TookPact(S, id, S.Chapter);
+        public static bool TookPact(GameState S, string id, int chapter) => S.Flags.ContainsKey($"pact:{S.Loop}:{chapter}:{id}");
         public static bool PactBroken(GameState S) => S.Flags.ContainsKey($"pactbroken:{S.Loop}:{S.Chapter}");
 
         static float Worn(GameState S, string id) => S.Flags.TryGetValue(Key(S, id), out var v) ? (float)v : 0;
