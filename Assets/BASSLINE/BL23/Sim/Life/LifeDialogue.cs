@@ -323,7 +323,7 @@ namespace BL23.Sim
                     }
                 case "flirt":
                     {
-                        // a resident drawn to 민혁 (stage 2+) says so in their own way — never 예담, 수아 or 진우
+                        // a resident drawn to 민혁 (stage 2+) says so in their own way (anyone: the owner lifted the exclusions)
                         if (NoRomance(npc)) return null;
                         string key = LineBank.Has(npc, "flirt@" + Cast.Player) || LineBank.Has(npc, "flirt") ? "flirt" : "love_hint";
                         var u = LifeKeyU(npc, Cast.Player, key, new SceneRun { Kind = "life", Npc = npc });

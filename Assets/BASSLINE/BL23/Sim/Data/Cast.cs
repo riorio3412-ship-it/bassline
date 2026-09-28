@@ -154,11 +154,11 @@ namespace BL23.Sim
             {
                 Id = "P02", Name = "김진우", Given = "진우", Gender = Gender.M, HeightCm = 163, Job = "심리학과 학생", Contract = "죽은 친구의 부활",
                 Obs = 92, Infer = 94, Argue = 88, Empathy = 82, Deceit = 97, Composure = 79,
-                Core = "타인 반응을 시험하고 내려다봄. 이해 능력이 배려로 이어지지는 않음", Flaw = "통제할 수 없는 진심에 약함",
+                Core = "타인 반응을 시험하고 내려다봄. 내키는 대로 말하고 우는 척도 하는, 갈피를 잡을 수 없는 어그로. 천진한 웃음으로 태연히 남을 괴롭히고 음흉하게 깔봄", Flaw = "통제할 수 없는 진심에 약함",
                 Secret = "친구의 죽음을 막지 못했고, 자기가 한 말이 그 죽음에 영향을 줬다는 사실을 숨기고 있다",
                 Likes = new[] { "사탕", "정치", "심리학 책", "사람 관찰" }, Dislikes = new[] { "뻔한 위로", "명령" }, Hobbies = new[] { "read", "observe", "game" }, FavRooms = new[] { "Library", "Lounge" },
-                P = new Persona { Morality = 0.45f, Aggression = 0.35f, Sociability = 0.6f, Curiosity = 0.95f, Loyalty = 0.3f, Fearfulness = 0.2f, Ambition = 0.6f, Honesty = 0.2f, Pride = 0.8f, Jealousy = 0.4f, WishDesire = 0.8f, Romance = 0.3f, Grudge = 0.5f },
-                Speech = new SpeechStyle { PoliteDefault = false, Fillers = new[] { "흐응", "글쎄" }, Exclaims = new[] { "오?", "재밌네" }, Laugh = "큭큭", Verbosity = 0.35f, VoicePitch = 1.12f, VoiceRate = 1.15f },
+                P = new Persona { Morality = 0.42f, Aggression = 0.45f, Sociability = 0.7f, Curiosity = 0.95f, Loyalty = 0.25f, Fearfulness = 0.2f, Ambition = 0.6f, Honesty = 0.12f, Pride = 0.85f, Jealousy = 0.4f, WishDesire = 0.8f, Romance = 0.3f, Grudge = 0.5f },
+                Speech = new SpeechStyle { PoliteDefault = false, Fillers = new[] { "흐응", "글쎄", "에이" }, Exclaims = new[] { "오?", "재밌네", "훌쩍" }, Laugh = "큭큭", Verbosity = 0.5f, VoicePitch = 1.12f, VoiceRate = 1.15f },
                 Look = new LookSpec { Model = "GLB:jinwoo", Hair = HairStyle.CurlyShort, HairColor = "#1C1A1C", EyeColor = "#5E5A5C", Silhouette = "제공 GLB (163cm)" }
             });
 
@@ -166,9 +166,9 @@ namespace BL23.Sim
             {
                 Id = "P03", Name = "한서윤", Given = "서윤", Gender = Gender.F, HeightCm = 170, Job = "대학생·학생회장", Contract = "가족이 다시 일어설 만큼의 돈",
                 Obs = 80, Infer = 85, Argue = 88, Empathy = 77, Deceit = 35, Composure = 84,
-                Core = "책임감·솔직함이 강함", Flaw = "도움받기를 패배처럼 여기고 한계를 늦게 인정", Secret = "이현이 벌인 일 때문에 가족 사업이 무너졌다",
+                Core = "책임감·솔직함이 강함. 절망 속에서도 동료와 희망을 믿고, 믿음직스럽지 못한 민혁을 챙긴다. 산뜻한 얼굴로 엄한 말을 하지만 악의는 없다", Flaw = "도움받기를 패배처럼 여기고 한계를 늦게 인정", Secret = "이현이 벌인 일 때문에 가족 사업이 무너졌다",
                 Likes = new[] { "필기구", "달지 않은 과자", "분담표", "작은 동물" }, Dislikes = new[] { "무책임", "새치기" }, Hobbies = new[] { "organize", "read", "cleanup" }, FavRooms = new[] { "Library", "Archive", "Dining" },
-                P = new Persona { Morality = 0.78f, Aggression = 0.3f, Sociability = 0.6f, Curiosity = 0.6f, Loyalty = 0.8f, Fearfulness = 0.3f, Ambition = 0.6f, Honesty = 0.85f, Pride = 0.75f, Jealousy = 0.2f, WishDesire = 0.75f, Romance = 0.3f, Grudge = 0.7f },
+                P = new Persona { Morality = 0.8f, Aggression = 0.3f, Sociability = 0.7f, Curiosity = 0.6f, Loyalty = 0.9f, Fearfulness = 0.2f, Ambition = 0.6f, Honesty = 0.88f, Pride = 0.7f, Jealousy = 0.2f, WishDesire = 0.75f, Romance = 0.3f, Grudge = 0.7f },
                 Speech = new SpeechStyle { PoliteDefault = true, Fillers = new[] { "그러니까" }, Exclaims = new[] { "잠깐", "정리하죠" }, Laugh = "후훗", Verbosity = 0.6f, VoicePitch = 1.25f },
                 Look = new LookSpec { Hair = HairStyle.Bob, HairColor = "#1B2233", HairColor2 = "#2E3D5E", EyeColor = "#15151A", EyeSharp = 0.65f, Build = 0.3f, Skin = "#F4DCCB",
                     Wear = { G(Garment.Shirt, "#F1EFEA"), G(Garment.Blazer, "#1F2A44", "#C9A24A", "trim"), G(Garment.PleatedSkirt, "#3A3D45"), G(Garment.Tights, "#15151A"), G(Garment.Loafers, "#2A1A14") },
@@ -217,10 +217,10 @@ namespace BL23.Sim
             {
                 Id = "P07", Name = "유시온", Given = "시온", Gender = Gender.M, HeightCm = 172, Job = "래퍼", Contract = "틀어진 모든 관계가 나아지는 것",
                 Obs = 89, Infer = 83, Argue = 42, Empathy = 83, Deceit = 44, Composure = 29,
-                Core = "호탕하고 친근함", Flaw = "돈·체면·인정 집착. 속상한 말을 쌓았다가 터뜨림", Secret = "몸담았던 갱단의 내부 밀고자였다",
+                Core = "호탕하고 자신만만함. 폭언을 일삼고 입만 열면 섹드립이 쏟아진다. 생각을 거치지 않고 아무에게나", Flaw = "돈·체면·인정 집착. 속상한 말을 쌓았다가 터뜨림. 허세 뒤에 외로움을 숨김", Secret = "몸담았던 갱단의 내부 밀고자였다",
                 Likes = new[] { "맥주", "돈", "모임", "독서" }, Dislikes = new[] { "무시", "밀고" }, Hobbies = new[] { "party", "music", "read" }, FavRooms = new[] { "Lounge", "MusicRoom", "Dining" },
-                P = new Persona { Morality = 0.55f, Aggression = 0.7f, Sociability = 0.95f, Curiosity = 0.5f, Loyalty = 0.7f, Fearfulness = 0.45f, Ambition = 0.6f, Honesty = 0.6f, Pride = 0.85f, Jealousy = 0.55f, WishDesire = 0.5f, Romance = 0.7f, Grudge = 0.7f },
-                Speech = new SpeechStyle { PoliteDefault = false, Fillers = new[] { "야", "브로" }, Exclaims = new[] { "와우!", "레알?" }, Laugh = "크하하", Verbosity = 0.7f, VoicePitch = 0.95f, VoiceRate = 1.2f },
+                P = new Persona { Morality = 0.5f, Aggression = 0.8f, Sociability = 0.95f, Curiosity = 0.5f, Loyalty = 0.7f, Fearfulness = 0.45f, Ambition = 0.6f, Honesty = 0.6f, Pride = 0.92f, Jealousy = 0.55f, WishDesire = 0.5f, Romance = 0.8f, Grudge = 0.7f },
+                Speech = new SpeechStyle { PoliteDefault = false, Fillers = new[] { "야", "브로", "와 씨" }, Exclaims = new[] { "와우!", "레알?", "크하하!" }, Laugh = "크하하", Verbosity = 0.85f, VoicePitch = 0.95f, VoiceRate = 1.2f },
                 Look = new LookSpec { Hair = HairStyle.Dreadlocks, HairColor = "#E36A1E", HairColor2 = "#F29A4A", EyeColor = "#3A2A1E", Build = 0.45f, Skin = "#E8C5A8",
                     Wear = { G(Garment.Tshirt, "#161616"), G(Garment.FurCoat, "#D9C3A0"), G(Garment.CargoPants, "#2C2C30"), G(Garment.HighTops, "#EDEDED") },
                     Acc = { Accessory.Sunglasses, Accessory.GoldChain, Accessory.Rings, Accessory.Earrings }, AccColor = "#E3B23C", Silhouette = "기획서 유지: 주황 레게, 선글라스, 모피 코트, 금 목걸이·반지" }
@@ -230,10 +230,10 @@ namespace BL23.Sim
             {
                 Id = "P08", Name = "서라온", Given = "라온", Gender = Gender.M, HeightCm = 180, Job = "인디 밴드 베이시스트", Contract = "옛 밴드 동료의 미발표 음원 소유권",
                 Obs = 86, Infer = 63, Argue = 70, Empathy = 73, Deceit = 55, Composure = 70,
-                Core = "허세를 싫어하고 농담으로 긴장을 풂", Flaw = "모욕도 농담으로 회피", Secret = "옛 동료의 미발표 음원을 자기 것으로 만들고 싶어 한다",
+                Core = "허세를 싫어함. 어둡고 조용한 분위기로 사람들과 잘 어울리지 않는다. 소심하진 않고 할 말은 하지만 말투가 까칠하다", Flaw = "사람을 밀어내고 혼자 삭인다. 모욕도 짧게 받아치고 넘김", Secret = "옛 동료의 미발표 음원을 자기 것으로 만들고 싶어 한다",
                 Likes = new[] { "리듬 게임", "핫팩", "베이스", "소리" }, Dislikes = new[] { "허세", "소음" }, Hobbies = new[] { "music", "game", "rest" }, FavRooms = new[] { "MusicRoom", "Corridor", "GameRoom" },
-                P = new Persona { Morality = 0.62f, Aggression = 0.35f, Sociability = 0.55f, Curiosity = 0.55f, Loyalty = 0.55f, Fearfulness = 0.35f, Ambition = 0.5f, Honesty = 0.55f, Pride = 0.5f, Jealousy = 0.6f, WishDesire = 0.65f, Romance = 0.4f, Grudge = 0.5f },
-                Speech = new SpeechStyle { PoliteDefault = false, Fillers = new[] { "아 뭐", "그니까" }, Exclaims = new[] { "헐", "에이" }, Laugh = "ㅋ", Verbosity = 0.35f, VoicePitch = 0.88f, VoiceRate = 0.95f },
+                P = new Persona { Morality = 0.62f, Aggression = 0.45f, Sociability = 0.25f, Curiosity = 0.55f, Loyalty = 0.55f, Fearfulness = 0.3f, Ambition = 0.5f, Honesty = 0.6f, Pride = 0.55f, Jealousy = 0.6f, WishDesire = 0.65f, Romance = 0.3f, Grudge = 0.55f },
+                Speech = new SpeechStyle { PoliteDefault = false, Fillers = new[] { "아 뭐", "…" }, Exclaims = new[] { "헐", "하." }, Laugh = "크", Verbosity = 0.25f, VoicePitch = 0.88f, VoiceRate = 0.95f },
                 Look = new LookSpec { Hair = HairStyle.ShaggyMid, HairColor = "#5E7486", HairColor2 = "#8FA6B8", EyeColor = "#44505A", EyeSharp = 0.4f, Build = 0.3f,
                     Wear = { G(Garment.Hoodie, "#4F6F6C", "", "faded"), G(Garment.DenimJacket, "#23262E"), G(Garment.Jeans, "#3B4250", "", "ripped"), G(Garment.HighTops, "#8B2F2F") },
                     Acc = { Accessory.Earphone, Accessory.BassBracelet, Accessory.Beanie }, AccColor = "#C9C9C9",

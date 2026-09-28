@@ -24,13 +24,13 @@ namespace BL23.Sim
                 "피로 쓴 「{glyph}」 봤지? 죽어 가면서 쓴 거야. {target} 말고 누가 있어.",
                 "난 그 글씨 코앞에서 봤어. 「{glyph}」. 그냥 읽으면 {target}이야." }),
             ["th_place_found"] = (new[] {
-                "고인 피도, 몸싸움 흔적도 전부 {place}에 있었어요. 거기서 당한 거예요.",
+                "흔적은 전부 {place}에 있었어요. {fragment} 거기서 당한 거예요.",
                 "{fragment} 다른 데서 당했다면 흔적이 거기 남았겠죠. {place}이에요.",
-                "제가 본 건 {place}뿐이에요. 피가 거기 고여 있었어요. 거기서 맞은 거예요." },
+                "제가 본 건 {place}뿐이에요. {fragment} 거기서 당한 거예요." },
                 new[] {
-                "피도 흔적도 다 {place}였잖아. 거기서 당한 거지.",
-                "{fragment} 딴 데서 맞았으면 거기 뭐라도 남았겠지. {place}야.",
-                "내가 본 건 {place}야. 피가 거기 고여 있었다고. 거기서 맞은 거야." }),
+                "흔적은 다 {place}에 있었잖아. {fragment} 거기서 당한 거지.",
+                "{fragment} 딴 데서 당했으면 거기 뭐라도 남았겠지. {place}이야.",
+                "내가 본 건 {place}뿐이야. {fragment} 거기서 당한 거야." }),
             ["th_place_heard"] = (new[] {
                 "아니요, 소리는 {place} 쪽에서 났어요. {time}쯤, {sound} 소리가 한 번.",
                 "{fragment} 제 귀가 틀리지 않았다면, {place} 쪽이었어요.",
@@ -59,16 +59,16 @@ namespace BL23.Sim
                 "{place}이에요. 거기 말고 다른 데서 무슨 일이 있었다는 흔적, 저는 못 봤어요.",
                 "복잡하게 생각하지 말죠. 쓰러진 자리가 당한 자리예요." },
                 new[] {
-                "{place}야. 딴 데서 뭔 일 있었다는 흔적, 난 못 봤어.",
+                "{place}이야. 딴 데서 뭔 일 있었다는 흔적, 난 못 봤어.",
                 "복잡하게 생각하지 마. 쓰러진 자리가 당한 자리야." }),
             ["th_alibi_culprit"] = (new[] {
                 "저는 그때 {place}에 있었어요. {with}도 저를 봤을 거예요.",
                 "{time}쯤이요? 저는 {place}에 있었습니다. {with}한테 물어보세요.",
-                "제가 어디 있었는지는 {with}이(가) 알아요. {place}였어요." },
+                "제가 어디 있었는지는 {with}이(가) 알아요. {place}이었어요." },
                 new[] {
                 "난 그때 {place}에 있었어. {with}도 날 봤을걸.",
                 "{time}쯤? 나 {place}에 있었어. {with}한테 물어봐.",
-                "내가 어디 있었는지는 {with}이(가) 알아. {place}였어." }),
+                "내가 어디 있었는지는 {with}이(가) 알아. {place}이었어." }),
             ["th_held"] = (new[] {
                 "그러고 보니… {time}쯤 {place}에서 {target}이(가) {item}을(를) 들고 있었어요. 전 그게 계속 마음에 걸려요.",
                 "{fragment} 그걸 왜 들고 다녔는지, {target}한테 먼저 들어야 해요.",
@@ -206,6 +206,8 @@ namespace BL23.Sim
                               new[] { "그걸로 날 몰겠다고?", "하… 그 사진이 뭘 말해 준다는 건데?", "고작 그거야?", "좀 더 제대로 된 걸 가져와." }),
             ["ask_with_time"] = (new[] { "…잠깐만요. 제가 {target}을(를) 본 건 {time}이에요. 그 전은… 저도 몰라요.", "제가 본 건 {reason}의 일이에요. 그 전에 어디 있었는지는 모르겠어요." },
                                  new[] { "…잠깐. 내가 {target} 본 건 {time}이야. 그 전은… 나도 몰라.", "내가 본 건 {reason}의 일이야. 그 전엔 어디 있었는지 몰라." }),
+            ["duel_stale"] = (new[] { "그건 아까 보여 준 거잖아요. 같은 걸로 또 몰아요?", "또 그거예요? 그 은판 하나로 몇 번을 우려먹어요?" },
+                              new[] { "그거 아까 보여 준 거잖아. 같은 걸로 또 몰아?", "또 그거야? 그 은판 하나로 몇 번을 우려먹을 건데?" }),
             ["ask_again"] = (new[] { "이미 다 말했잖아요.", "같은 걸 몇 번이나 물어요?" }, new[] { "이미 다 말했잖아.", "같은 거 몇 번이나 물어?" }),
             ["ask_plate"] = (new[] { "{plate}에 그렇게 찍혀 있잖아요. 제가 지어낸 게 아니에요.", "제가 본 게 아니라 {plate}이(가) 그렇게 말하고 있어요." },
                              new[] { "{plate}에 그렇게 찍혀 있잖아. 내가 지어낸 거 아니야.", "내가 본 게 아니라 {plate}이(가) 그렇게 말하잖아." }),
@@ -250,6 +252,8 @@ namespace BL23.Sim
                               new[] { "그럼… 누가 {victim} 손 옆에 대신 써 놨다는 거야?", "…그럼 그 글씨는 누가, 언제 쓴 건데?" }),
             ["ev_place"] = (new[] { "그럼… {place}에서 맞고, {found}까지 걸어 나온 거네요.", "…{place}에서 시작된 거라면, {victim}은(는) 도망치다가 쓰러진 거예요." },
                             new[] { "그럼… {place}에서 맞고 {found}까지 걸어 나온 거네.", "…{place}에서 시작된 거면, {victim}은(는) 도망치다가 쓰러진 거야." }),
+            ["ev_place_moved"] = (new[] { "그럼… 누가 {victim}을(를) {found}(으)로 옮겼다는 거예요?", "…{place}에서 당하고, 누가 {found}(으)로 데려다 놓은 거네요." },
+                                  new[] { "그럼… 누가 {victim}을(를) {found}(으)로 옮겼다는 거야?", "…{place}에서 당하고, 누가 {found}(으)로 데려다 놓은 거네." }),
             ["ev_wound"] = (new[] { "…그럼 흉기는 따로 있다는 거네요. 그건 어디 있는데요?", "제가 잘못 짚었네요. 그럼 뭘로…?" },
                             new[] { "…그럼 흉기는 따로 있다는 거네. 그건 어딨는데?", "내가 잘못 짚었네. 그럼 뭘로…?" }),
             ["ev_tod"] = (new[] { "그럼… 누가 시신을 데웠다는 거예요? 시간을 속이려고요?" }, new[] { "그럼… 누가 시신을 데웠다는 거야? 시간 속이려고?" }),
@@ -261,8 +265,12 @@ namespace BL23.Sim
             ["re_realize"] = (new[] { "그럼 우리, 여태 엉뚱한 사람을 의심하고 있었던 거예요?", "…그렇게 간단한 얘기가 아니었네요." }, new[] { "그럼 우리 여태 엉뚱한 사람 의심한 거야?", "…그렇게 간단한 얘기가 아니었네." }),
             ["re_framed"] = (new[] { "누가 제 이름을 써 놨다는 거예요? 누구예요, 대체!", "…저한테 뒤집어씌우려고 했다고요? 누가요?" }, new[] { "누가 내 이름을 써 놨다는 거야? 누구야, 대체!", "…나한테 뒤집어씌우려고 했다고? 누가?" }),
             ["re_duel_gasp"] = (new[] { "…정말이에요? {target}이(가)?", "말도 안 돼… {target}이(가) 그랬다고요?" }, new[] { "…진짜야? {target}이(가)?", "말도 안 돼… {target}이(가) 그랬다고?" }),
-            ["re_betrayed"] = (new[] { "{target}, 당신이었어요? 저한테 뒤집어씌우려고…!", "그 글씨도, 그 말도 전부… {target}이(가) 한 거였어요?" }, new[] { "{target}, 너였어? 나한테 뒤집어씌우려고…!", "그 글씨도, 그 말도 전부… {target}이(가) 한 거였어?" }),
+            ["re_betrayed"] = (new[] { "{target}이었어요? 저한테 뒤집어씌우려고…!", "그 글씨도, 그 말도 전부… {target}이(가) 한 거였어요?" }, new[] { "{target}, 너였어? 나한테 뒤집어씌우려고…!", "그 글씨도, 그 말도 전부… {target}이(가) 한 거였어?" }),
             ["re_grief"] = (new[] { "{victim}은(는)… 그렇게 가면 안 되는 사람이었어요.", "왜요… 왜 {victim}이었어요?" }, new[] { "{victim}은(는)… 그렇게 가면 안 되는 애였어.", "왜… 왜 하필 {victim}이었는데?" }),
+
+            // ---------------- someone on 민혁's side (서윤 by temperament; DebatePlayer.Ally)
+            ["ally_encourage"] = (new[] { "괜찮아요. 다시 봐요.", "한 번 틀렸다고 끝나는 거 아니에요." }, new[] { "괜찮아. 다시 봐.", "한 번 틀렸다고 끝나는 거 아니야." }),
+            ["ally_praise"] = (new[] { "그거예요.", "잘했어요." }, new[] { "그거야.", "잘했어." }),
 
             // ---------------- 민혁 (player) — plain, polite
             ["p_show"] = (new[] { "{plate}. 이걸 보세요.", "{holder}, {plate}을(를) 봐 주세요.", "{plate}. 이걸 보면 달라요." }, new string[0]),
@@ -273,9 +281,71 @@ namespace BL23.Sim
             ["p_accuse"] = (new[] { "{target}. 당신이에요.", "제 생각엔… {target}이에요." }, new string[0]),
         };
 
+        /// <summary>Lines only one resident says (their temperament: CharacterBible "Owner traits"), already in their register.
+        /// Used for most of that resident's lines at the key; the shared pool fills in.</summary>
+        static readonly Dictionary<string, string[]> Personal = new Dictionary<string, string[]>
+        {
+            // 시온 — confident, foul-mouthed, never thinks first
+            ["P07|re_scoff"] = new[] { "야, 그걸로 뭘 하겠다고? 그걸로 사람 잡으면 나 벌써 다섯 번은 잡혔다.", "크하하, 민혁, 방금 헛발질한 거 알지?", "씨발, 그게 증거면 내 속옷도 증거다." },
+            ["P07|re_pileon"] = new[] { "레알. 딱 봐도 수상하잖아.", "내 말이! 아까부터 냄새났어." },
+            ["P07|re_protest"] = new[] { "야, 씨발, 내가 왜! 내가 왜 {victim}을(를) 건드려!", "미쳤냐? 나 같은 놈이 사람 죽이면 동네방네 다 알아. 입이 이렇게 큰데!" },
+            ["P07|re_doubt"] = new[] { "야, {holder}. 그거 네 눈으로 봤냐, 아니면 소설 쓰냐?" },
+            ["P07|push_echo"] = new[] { "그치? 내가 그럴 줄 알았다니까." },
+            ["P07|re_realize"] = new[] { "와 씨, 그럼 우리 여태 헛다리 짚은 거야?" },
+            ["P07|res_holder_concede"] = new[] { "…아 씨, 내가 틀렸네. 인정. 쪽팔리게." },
+            ["P07|res_holder_stubborn"] = new[] { "그래도 수상한 건 수상한 거야! 내 감은 안 틀려!" },
+            ["P07|res_accused_relief"] = new[] { "봤냐? 봤냐고! 나 아니라니까! 크하하!" },
+            ["P07|re_framed"] = new[] { "누가 내 이름 써 놨어? 나와. 지금 당장 나와, 씨발!" },
+            ["P07|vote_line"] = new[] { "{target}. 틀리면 내가 욕먹을게. 크하하." },
+            // 진우 — the innocent smile that bites; fake tears
+            ["P02|re_scoff"] = new[] { "흐응~ 그게 다야? 실망인데. 큭.", "민혁, 방금 손 떨렸지? 틀린 거 알고 내민 거야?" },
+            ["P02|re_protest"] = new[] { "흑… 나 지금 의심받는 거야? 너무해…|…큭, 농담. 근데 증거는?", "흐응, 나를? 재밌네. 계속해 봐. 어디까지 가나 보게." },
+            ["P02|re_pileon"] = new[] { "큭, 재밌어지네.", "흐응, 다들 그 사람 쳐다보는 속도가 똑같네." },
+            ["P02|re_doubt"] = new[] { "흐응, {holder}. 방금 대답 전에 침 삼켰어. 본 거 맞아?" },
+            ["P02|res_holder_concede"] = new[] { "흐응, 내가 틀렸네. 재밌다. 이런 거 처음이야." },
+            ["P02|res_holder_stubborn"] = new[] { "틀린 건 인정. 근데 너희 표정이 더 재밌었어. 큭." },
+            ["P02|res_accused_relief"] = new[] { "흐응, 봐. 흑흑, 억울했어~ …큭." },
+            ["P02|re_realize"] = new[] { "큭, 다들 얼굴 봐. 방금 누굴 몰았는지 알아?" },
+            ["P02|vote_line"] = new[] { "{target}. 이유? 표정. 큭." },
+            // 라온 — dark, quiet, sharp
+            ["P08|re_scoff"] = new[] { "시간 낭비야.", "…그건 아니야. 다시 봐." },
+            ["P08|re_doubt"] = new[] { "…{holder}, 그거 네가 본 거야? 아니면 그냥 떠드는 거야?", "들은 거랑 본 거 구분해. 다들 그게 안 돼." },
+            ["P08|re_pileon"] = new[] { "…그 말은 맞아." },
+            ["P08|re_protest"] = new[] { "…나 아니야. 두 번 말 안 해.", "몰고 싶으면 증거부터 가져와." },
+            ["P08|res_holder_concede"] = new[] { "…틀렸네. 됐어." },
+            ["P08|res_holder_stubborn"] = new[] { "틀렸다고 해서 네 말이 맞는 건 아니야." },
+            ["P08|res_accused_relief"] = new[] { "…그래. 이제 됐지?" },
+            ["P08|vote_line"] = new[] { "{target}. 더 말 안 해." },
+            // 서윤 — hope, said with a clear face (and 민혁 looked after)
+            ["P03|ally_encourage"] = new[] { "괜찮아요, 민혁 씨. 방금 건 틀렸지만, 다시 보면 돼요.", "웃으면서 말할게요. 그 은판 말고요. 민혁 씨라면 찾을 수 있어요.", "틀려도 돼요. 우리 다 같이 여기서 나갈 거니까요." },
+            ["P03|ally_praise"] = new[] { "그거예요, 민혁 씨.", "잘했어요. 한 칸 채웠어요." },
+            ["P03|re_doubt"] = new[] { "{holder}, 확정된 것부터 말해요. 짐작은 뒤에요." },
+            ["P03|re_realize"] = new[] { "…괜찮아요. 틀린 건 고치면 돼요. 우리 아직 다 여기 있잖아요." },
+            ["P03|re_fear"] = new[] { "무서워도 세요. 한 명, 두 명… 우린 아직 여기 있어요." },
+            ["P03|vote_line"] = new[] { "{target}. 끝까지 믿고 싶었어요. 그래도요." },
+            ["P03|res_holder_concede"] = new[] { "제가 틀렸어요. 고칠게요. 지금 바로요." },
+        };
+
+        /// <summary>Signature tics belong to one resident (CastTraits.TicOwner): the shared pool's generic wording is swapped out
+        /// when someone else would say it.</summary>
+        static readonly (string tic, string owner, string instead)[] TicSwap =
+        {
+            ("잠깐만요", "P15", "잠시만요"), ("정리하면,", "P03", "결국,"), ("솔직히", "P13", "사실"), ("세상에", "P09", "이럴 수가"), ("대박", "P12", "진짜"),
+        };
+
         /// <summary>A line for <paramref name="speaker"/> at <paramref name="key"/>, never the same variant twice for that speaker in this 심판.</summary>
         public static string Say(GameState S, string speaker, string key, Dictionary<string, string> slots, List<string> used, string salt)
         {
+            // the resident's own words first, most of the time
+            if (speaker != null && Personal.TryGetValue(speaker + "|" + key, out var own))
+            {
+                var fresh = Enumerable.Range(0, own.Length).Where(i => used == null || !used.Contains(speaker + "|" + key + "|own" + i)).OrderBy(i => MurderHash.U01(S, "dlp:" + speaker + ":" + key + ":" + salt + ":" + i)).ToList();
+                if (fresh.Count > 0 && (!L.ContainsKey(key) || MurderHash.U01(S, "dlpp:" + speaker + ":" + key + ":" + salt) < 0.7))
+                {
+                    used?.Add(speaker + "|" + key + "|own" + fresh[0]);
+                    return Fill(own[fresh[0]], slots);
+                }
+            }
             if (!L.TryGetValue(key, out var v)) return null;
             bool polite = speaker == Cast.Player || speaker == Cast.Butler || (Cast.Get(speaker)?.Speech?.PoliteDefault ?? true);
             var pool = polite ? v.p : v.c; if (pool.Length == 0) pool = polite ? v.c : v.p; if (pool.Length == 0) return null;
@@ -297,15 +367,54 @@ namespace BL23.Sim
                     text = text.Replace(k + "이에요", val + (b ? "이에요" : "예요")).Replace(k + "이야", val + (b ? "이야" : "야")).Replace(k + "이잖아", val + (b ? "이잖아" : "잖아")).Replace(k + "이었", val + (b ? "이었" : "였")).Replace(k, val);
                 }
             text = System.Text.RegularExpressions.Regex.Replace(text, "\\{[a-z]+\\}", "");
+            foreach (var (tic, owner, instead) in TicSwap) if (speaker != owner && text.Contains(tic)) text = text.Replace(tic, instead);
             // a speaker's own filler now and then, for the talkative ones
             var st = Cast.Get(speaker)?.Speech;
-            bool arguing = key.StartsWith("th_") || key.StartsWith("push_") || key == "re_doubt" || key == "re_where_all";   // fillers colour arguments, never a concession or a break
-            if (arguing && !text.StartsWith("…") && st != null && st.Fillers != null && st.Fillers.Length > 0 && st.Verbosity >= 0.55f && MurderHash.U01(S, "dlf:" + speaker + ":" + key + ":" + salt) < 0.22)
-                text = st.Fillers[(int)(MurderHash.U01(S, "dlf2:" + speaker + ":" + salt) * st.Fillers.Length) % st.Fillers.Length] + " " + text;
+            // (no borrowed fillers: a filler in front of a theory read as a non sequitur — the personal lines carry the voice)
             return LineBank.FixParticles(text.Replace("  ", " ").Trim());
         }
 
         public static bool Has(string key) => L.ContainsKey(key);
+
+        /// <summary>Words written in 해요체 (the culprit's TrialPack, a few generated lines) in the speaker's own register: a 반말
+        /// speaker drops the 요 and the humble pronouns. Only sentence endings and pronouns change.</summary>
+        public static string InRegister(string speaker, string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            bool polite = speaker == Cast.Player || speaker == Cast.Butler || (Cast.Get(speaker)?.Speech?.PoliteDefault ?? true);
+            return polite ? text : Casualize(text);
+        }
+
+        static readonly (string from, string to)[] CasualWords =
+        {
+            ("저희", "우리"), ("저는", "나는"), ("저도", "나도"), ("제가", "내가"), ("저를", "나를"), ("저한테", "나한테"), ("저랑", "나랑"), ("저하고", "나하고"),
+            ("당신들", "너희"), ("당신", "너"), ("제 ", "내 "),
+        };
+        static readonly (string from, string to)[] CasualEnds =
+        {
+            ("이에요", "이야"), ("예요", "야"), ("마세요", "마"), ("보세요", "봐"), ("하세요", "해"), ("주세요", "줘"), ("가세요", "가"), ("오세요", "와"),
+            ("거든요", "거든"), ("잖아요", "잖아"), ("는데요", "는데"), ("네요", "네"), ("군요", "군"), ("죠", "지"), ("요", ""),
+        };
+
+        static string Casualize(string t)
+        {
+            foreach (var (from, to) in CasualWords) t = System.Text.RegularExpressions.Regex.Replace(t, "(?<![가-힣])" + from, to);
+            foreach (var (from, to) in CasualEnds) t = System.Text.RegularExpressions.Regex.Replace(t, from + "(?=[.!?…,~\\s|]|$)", to);
+            return t;
+        }
+
+        /// <summary>Slots into an already-registered personal line (the copula after a name, particles fixed).</summary>
+        static string Fill(string text, Dictionary<string, string> slots)
+        {
+            if (slots != null)
+                foreach (var kv in slots)
+                {
+                    string val = kv.Value ?? "", k = "{" + kv.Key + "}"; bool b = Batchim(val);
+                    text = text.Replace(k + "이에요", val + (b ? "이에요" : "예요")).Replace(k + "이야", val + (b ? "이야" : "야")).Replace(k, val);
+                }
+            text = System.Text.RegularExpressions.Regex.Replace(text, "\\{[a-z]+\\}", "");
+            return LineBank.FixParticles(text.Replace("  ", " ").Trim());
+        }
 
         static bool Batchim(string w)
         {

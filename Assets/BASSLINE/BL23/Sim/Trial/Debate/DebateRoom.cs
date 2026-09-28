@@ -26,8 +26,10 @@ namespace BL23.Sim
             {
                 int room = last.TryGetValue(id, out var r) ? r : S.A(id)?.Room ?? -1;
                 var k = S.K(id);
+                // someone they were really with: seen in the same room, for a while, around the hour
                 var with = k.Sightings.Where(s => s.Room == room && s.T0 <= t + 5 && s.T1 >= t - 10 && s.IdConf > 0.6f && !s.Dead && s.Target != id && who.Contains(s.Target))
-                                      .GroupBy(s => s.Target).OrderByDescending(g => g.Sum(s => s.T1 - s.T0)).ThenBy(g => g.Key, StringComparer.Ordinal).Select(g => g.Key).FirstOrDefault();
+                                      .GroupBy(s => s.Target).Where(g => g.Sum(s => Math.Min(s.T1, t + 5) - Math.Max(s.T0, t - 10)) >= 5)
+                                      .OrderByDescending(g => g.Sum(s => s.T1 - s.T0)).ThenBy(g => g.Key, StringComparer.Ordinal).Select(g => g.Key).FirstOrDefault();
                 res[id] = (room, with, room == D.KillRoom || room == D.FoundRoom);
             }
             return res;
@@ -48,7 +50,7 @@ namespace BL23.Sim
             string chair = jur.Contains("P03") && "P03" != D.Target ? "P03" : PickHolder(sim, T, jur, x => Arg(x) + Obs(x) * 0.3, "chair", D.Target);
             if (chair != null) DSay(sim, T, chair, "rc_open", new Dictionary<string, string> { { "time", ClockFmt.Vague(t) } }, BeatKind.Line, "claim", null, Emotion.Neutral, Anim.Talk, 0.4f);
             // who speaks: pairs first (they confirm each other), then the ones alone, the culprit among them, never more than 9
-            var said = new List<string>();
+            var said = new List<string>(); int oneSided = 0; var named = new List<string>();
             var order = jur.OrderBy(x => where[x].with != null && where.ContainsKey(where[x].with) && where[where[x].with].with == x ? 0 : 1)
                            .ThenBy(x => DH(S, "rc:" + x)).ToList();
             int lines = 0;
@@ -59,16 +61,17 @@ namespace BL23.Sim
                 if (j == D.Target)
                 {
                     int room = D.ClaimRoom >= 0 ? D.ClaimRoom : w.room;
-                    string text = D.StoryText ?? DebateLines.Say(S, j, "rc_alone", new Dictionary<string, string> { { "time", ClockFmt.Vague(t) }, { "place", PlaceWord(S, j, room) } }, D.SpokenKeys, D.Seq.ToString());
-                    DText(sim, T, j, text, BeatKind.Line, "claim", null, Emotion.Neutral, Anim.Talk, 0.35f);
-                    D.Alone.Add(j); said.Add(j); lines++;
+                    DSay(sim, T, j, "rc_alone", new Dictionary<string, string> { { "time", ClockFmt.Vague(t) }, { "place", PlaceWord(S, j, room) } }, BeatKind.Line, "claim", null, Emotion.Neutral, Anim.Talk, 0.35f);
+                    D.Alone.Add(j); D.Said[j] = room; said.Add(j); lines++;
                     continue;
                 }
+                D.Said[j] = w.room;
                 bool mutual = w.with != null && where.ContainsKey(w.with) && where[w.with].with == j && w.with != D.Target;
                 if (mutual)
                 {
                     DSay(sim, T, j, "rc_with", new Dictionary<string, string> { { "time", ClockFmt.Vague(t) }, { "place", PlaceWord(S, j, w.room) }, { "with", "@" + w.with } }, BeatKind.Line, "claim", null, Emotion.Neutral, Anim.Talk, 0.35f);
                     DSay(sim, T, w.with, "rc_confirm", new Dictionary<string, string> { { "target", "@" + j } }, BeatKind.Line, "claim", null, Emotion.Neutral, Anim.Talk, 0.3f);
+                    D.Said[w.with] = w.room; named.Add(w.with);
                     D.Paired.Add(string.CompareOrdinal(j, w.with) < 0 ? j + "|" + w.with : w.with + "|" + j);
                     said.Add(j); said.Add(w.with); lines += 2;
                     continue;
@@ -79,9 +82,10 @@ namespace BL23.Sim
                     D.Alone.Add(j); said.Add(j); lines++;
                     continue;
                 }
-                if (w.with != null && w.with != D.Target)
+                if (w.with != null && w.with != D.Target && oneSided == 0 && !named.Contains(w.with))
                 {
-                    // one-sided: they saw someone there, but the other did not notice them
+                    // one-sided: they saw someone there, but the other did not notice them (once per roll call: a jolt, not a pattern)
+                    oneSided++; named.Add(w.with);
                     DSay(sim, T, j, "rc_with", new Dictionary<string, string> { { "time", ClockFmt.Vague(t) }, { "place", PlaceWord(S, j, w.room) }, { "with", "@" + w.with } }, BeatKind.Line, "claim", null, Emotion.Neutral, Anim.Talk, 0.35f);
                     DSay(sim, T, w.with, "rc_didnt_see", new Dictionary<string, string> { { "target", "@" + j } }, BeatKind.Interrupt, "object", null, Emotion.Surprised, Anim.Shrug, 0.45f);
                     D.Alone.Add(j); said.Add(j); lines += 2;
@@ -136,6 +140,9 @@ namespace BL23.Sim
             else PileOn(sim, T, t1);
         }
 
+        /// <summary>The verb for what was done (closing argument): 쳤어요 · 찔렀어요 · 목을 졸랐어요 …</summary>
+        static string HitVerb(DamageType d) => d == DamageType.Choke ? "목을 졸랐어요" : d == DamageType.Stab ? "찔렀어요" : d == DamageType.Cut ? "베었어요" : d == DamageType.Drown ? "물에 빠뜨렸어요" : d == DamageType.Crush ? "짓눌렀어요" : "쳤어요";
+
         static string HowWord(DamageType d) => d == DamageType.Choke ? "목을 졸랐을" : d == DamageType.Stab ? "찔렀을" : d == DamageType.Cut ? "베었을" : d == DamageType.Blunt ? "머리를 내리쳤을" : d == DamageType.Drown ? "물에 빠뜨렸을" : d == DamageType.Crush ? "짓눌렀을" : "해쳤을";
 
         // ================================================================== the people around a result
@@ -144,7 +151,7 @@ namespace BL23.Sim
         {
             var S = sim.S; var D = T.Debate; var m = D.Mysteries.FirstOrDefault(x => x.Id == th.Mystery);
             if (m == null || th.Holder == D.Target || !Jurors(S, T).Contains(th.Holder)) return false;
-            string key = m.Trick == "Message" ? "ev_message" : m.Trick == "Place" ? "ev_place" : m.Trick == "Wound" ? "ev_wound" : m.Trick == "Tod" ? "ev_tod" : m.Trick == "Seal" ? "ev_seal" : m.Trick == "Swap" ? "ev_swap" : m.Trick == "Accident" || m.Trick == "Natural" || m.Trick == "Suicide" ? "ev_cause" : null;
+            string key = m.Trick == "Message" ? "ev_message" : m.Trick == "Place" ? (D.Moved ? "ev_place_moved" : "ev_place") : m.Trick == "Wound" ? "ev_wound" : m.Trick == "Tod" ? "ev_tod" : m.Trick == "Seal" ? "ev_seal" : m.Trick == "Swap" ? "ev_swap" : m.Trick == "Accident" || m.Trick == "Natural" || m.Trick == "Suicide" ? "ev_cause" : null;
             if (key == null || (Cast.Get(th.Holder)?.P.Pride ?? 0.5f) >= 0.75f || DH(S, "evolve:" + th.Id) > 0.65) return false;
             DSay(sim, T, th.Holder, key, new Dictionary<string, string> { { "victim", "@" + D.Victim }, { "place", S.RoomName(D.KillRoom) }, { "found", S.RoomName(D.FoundRoom) } }, BeatKind.Line, "recant", th.TrialClaim, Emotion.Surprised, Anim.Think, 0.5f, th.Id);
             th.EvolvedFrom = th.Id;
@@ -165,16 +172,31 @@ namespace BL23.Sim
         {
             var S = sim.S; var D = T.Debate; string V = sim.CallName(Cast.Player, D.Victim);
             string C(string id) => sim.CallName(Cast.Player, id);
-            bool Settled(string trick) => D.Mysteries.Any(m => m.Trick == trick && m.State == "settled");
+            bool Settled(string trick) => D.Mysteries.Any(m => m.Trick == trick && m.State == "settled" && m.SettledBy != null && !m.SettledBy.EndsWith("withdrawn"));
             var lines = new List<string>();
             lines.Add("처음부터 되짚어 볼게요. 그날 밤에 있었던 일을요.");
             string when = D.Plaques.Any(q => q.By == "house") || Settled("Tod") ? ClockFmt.Vague(D.KillClock) : null;
-            string site = Settled("Place") ? S.RoomName(D.KillRoom) : S.RoomName(D.FoundRoom);
-            lines.Add(when != null ? $"사건은 {when}, {site}에서 일어났어요." : $"사건은 {site}에서 일어났어요.");
+            // the scene is named only when the court settled it (or nobody ever doubted the room the body lay in)
+            var placeM = D.Mysteries.FirstOrDefault(m => m.Trick == "Place");
+            bool placeKnown = Settled("Place") || (placeM == null && D.KillRoom == D.FoundRoom);
+            if (placeKnown)
+            {
+                string site = S.RoomName(Settled("Place") ? D.KillRoom : D.FoundRoom);
+                lines.Add(when != null ? $"사건은 {when}, {site}에서 일어났어요." : $"사건은 {site}에서 일어났어요.");
+            }
+            else
+            {
+                string found = S.Layout.Room(D.FoundRoom)?.Owner == D.Victim ? "자기 방" : S.RoomName(D.FoundRoom);
+                lines.Add(when != null ? $"사건은 {when}에 일어났어요. {V}은(는) {found}에서 발견됐고요." : $"{V}은(는) {found}에서 발견됐어요.");
+                var heard = placeM == null ? null : D.Theories.FirstOrDefault(t => t.Mystery == placeM.Id && t.True && t.State != "collapsed");
+                if (heard != null) lines.Add($"{C(heard.Holder)}은(는) {S.RoomName(D.KillRoom)} 쪽에서 소리를 들었다고 했지만, 거기서 당했는지는 끝내 가리지 못했어요.");
+            }
             var M = D.Mind; var inc = S.Incidents.TryGetValue(D.Incident, out var i) ? i : null; var weapon = inc?.Weapon != null ? S.I(inc.Weapon) : null;
             bool weaponShown = weapon != null && D.Deck.Plates.Any(p => (p.State == PlateState.Sealed || M.Used.Contains(p.Id)) && p.Props.Any(pp => pp.Kind == PropKind.Held && pp.A == D.Target && pp.Item == weapon.Type));
-            if (Settled("Wound") || weaponShown) lines.Add(weaponShown ? $"범인은 거기서 {V}을(를) {weapon.Kor}(으)로 쳤어요." : $"범인은 거기서 {V}을(를) {WeaponWord(inc?.Dmg ?? DamageType.Blunt)}(으)로 쳤어요.");
-            if (Settled("Place") && D.KillRoom != D.FoundRoom) lines.Add($"{V}은(는) {S.RoomName(D.FoundRoom)}까지 갔지만, 거기서 쓰러졌어요.");
+            var dmg = inc?.Dmg ?? DamageType.Blunt;
+            string there = placeKnown ? "거기서 " : "";
+            if (Settled("Wound") || weaponShown) lines.Add(weaponShown ? $"범인은 {there}{V}을(를) {weapon.Kor}(으)로 {HitVerb(dmg)}." : $"범인은 {there}{V}을(를) {WeaponWord(dmg)}(으)로 {HitVerb(dmg)}.");
+            if (Settled("Place") && D.KillRoom != D.FoundRoom) lines.Add(D.Moved ? $"그리고 {V}을(를) {S.RoomName(D.FoundRoom)}(으)로 옮겼어요. 거기서 당한 것처럼 보이게요." : $"{V}은(는) {S.RoomName(D.FoundRoom)}까지 갔지만, 거기서 쓰러졌어요.");
             if (Settled("Message"))
             {
                 var frame = D.Deck.Plates.FirstOrDefault(p => p.Role == PlateRole.Frame && p.Root.StartsWith("trace:"));
@@ -185,6 +207,12 @@ namespace BL23.Sim
             if (Settled("Tod")) lines.Add("시신을 데우거나 식혀서, 숨진 시각까지 속이려 했어요.");
             var fa = D.Deck.Plates.FirstOrDefault(p => p.Role == PlateRole.FalseAlibi && p.State == PlateState.Flipped);
             if (fa != null) lines.Add($"그다음 {S.RoomName(fa.Room)}(으)로 가서, {C(fa.Witness)} 눈에 띄는 자리에 있었어요. {ClockFmt.Vague(fa.T0)}에요. 그게 알리바이가 됐죠.");
+            else
+            {
+                var whoM = D.Mysteries.FirstOrDefault(m => m.Trick == "Who");
+                var alibi = whoM == null ? null : D.Theories.FirstOrDefault(t => t.Mystery == whoM.Id && t.Holder == D.Target && t.Lie != null);
+                if (alibi != null && alibi.State == "collapsed" && alibi.Claim != null && alibi.Claim.Room >= 0) lines.Add($"그리고 그 시간엔 {S.RoomName(alibi.Claim.Room)}에 있었다고 말했어요. 거짓말이었죠.");
+            }
             if (D.Accused != null && D.Accused == D.Target && M.Broken) lines.Add($"그 모든 걸 할 수 있었던 사람은 한 사람뿐이에요. …그렇죠, {C(D.Target)}?");
             else if (D.Accused != null) { string n = C(D.Accused); lines.Add($"제가 지목한 사람은 {n}{LineBank.Josa(n, "이에요")}."); }
             foreach (var l in lines) DText(sim, T, Cast.Player, LineBank.FixParticles(l), BeatKind.Summary, key: "summary", emo: Emotion.Neutral, gesture: l.StartsWith("그 모든") ? Anim.Point : Anim.Talk, intensity: 0.6f);

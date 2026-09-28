@@ -368,6 +368,8 @@ Every entry follows the same order:
 
 **Hook.** 사람의 반응을 수집하는 163cm 심리학도. 사탕을 내밀며 당신을 시험하지만, 그가 제일 두려워하는 건 자기 대답이다.
 
+**Owner traits (2026-09-28).** 마음 내키는 대로 적당히 말하고, 우는 척을 하는, 갈피를 잡을 수 없는 인물. 순진무구하게 웃는 얼굴과는 딴판으로 남을 괴롭히는 말과 행동을 태연히 하고, 음흉하게 웃으며 남을 깔보는 어그로. → `Voice_Traits.cs` (`fake_cry` + 방 안의 `react_fakecry`, 괴롭히는 `tease`, 차가운 `insult`), 일상 잡담에서 우는 척 12%·찌르기 30% (`LifeBanter.TemperKey`), Persona: 정직 0.12, 공격성 0.45, 사교성 0.7, 자존심 0.85.
+
 **Canon.** 20, 163 cm, psychology student. GLB model, with dark-face states `HollowGrin`, `CorneredStare` and `VeiledSmirk` (HANDOFF 37). Deceit 97.
 - Contract: bring back a dead friend.
 - Secret: his reply to the friend's last message.
@@ -441,6 +443,8 @@ Every entry follows the same order:
 ### P03 한서윤 — weak in play: see fix list
 
 **Hook.** 매일 아침 열여덟 명을 세는 학생회장. 자기 이름은 언제나 명단 맨 끝에 쓴다.
+
+**Owner traits (2026-09-28).** 절망적인 상황 속에서도 동료와 희망의 힘을 믿는다. 어딘가 믿음직스럽지 못한 민혁에게 조언하고 신경 써 준다. 산뜻한 얼굴로 엄중한 말을 하지만 악의는 없다. → `Voice_Traits.cs` (희망의 잡담, 민혁에게 하는 조언 `small_talk@P01`, 죽음 뒤의 `afterdeath`, 자기 `comfort`, 웃으며 끊는 `react_swear`/`react_dirty`), 심판에서 민혁이 헛짚으면 다독이는 줄. Persona: 충성 0.9, 두려움 0.2, 사교성 0.7.
 
 **Canon.** 20, 170 cm, university student-council president. Procedural model: navy blazer, one red armband.
 - Contract: money for the family.
@@ -756,6 +760,8 @@ Every entry follows the same order:
 
 **Hook.** 옥상 무대에서 시작한 래퍼. 모두의 이름을 새로 지어 부르지만, 자기 폰 속 스물세 개의 이름에는 연락하지 못한다.
 
+**Owner traits (2026-09-28).** 평소에는 자신만만하고 폭언을 일삼으며, 입만 열었다 하면 섹드립이 폭포수처럼 쏟아진다. 생각을 거치지 않고 아무에게나. (허세 뒤의 외로움과 밀고의 비밀은 그대로다.) → `Voice_Traits.cs` (잡담은 거칠되 성적이지 않게, 섹드립은 `dirty_joke`에 몰아서 15줄 + 짝 대사), 일상 잡담에서 친하든 아니든 섹드립 30%·폭언 15%·놀림 20% (`LifeBanter.TemperKey`). Persona: 공격성 0.8, 자존심 0.92, 연애 0.8, 말수 0.85.
+
 **Canon.** 20, 172 cm, rapper. Procedural model: orange dreadlocks, sunglasses, fur coat, gold chain.
 - Contract: every broken relationship mended.
 - Secret: he informed on his crew of five 형들 after a detective promised to keep him out; all five were jailed.
@@ -824,6 +830,8 @@ Every entry follows the same order:
 ### P08 서라온
 
 **Hook.** 모든 소리를 박자로 듣는 베이시스트. 한쪽 이어폰을 빼는 순간은, 당신을 듣기로 한 순간이다.
+
+**Owner traits (2026-09-28).** 살짝 어둡다. 소심하진 않지만 어둡고 조용한 분위기로 다른 사람들과 잘 어울리려 하지 않는다. 할 말은 하는 타입이지만 말투가 까칠하다. → `Voice_Traits.cs` (짧고 까칠한 잡담, `brush_off`, 조용한 `comfort`, 베는 `insult`), 가깝지 않은 사람에게는 대답 대신 퉁명스러운 한마디 30%. Persona: 사교성 0.25, 공격성 0.45, 말수 0.25. "농담 아니야" 반복 대신 짧은 말로 밀어낸다.
 
 **Canon.** 20, 180 cm, indie bassist. Procedural model: gray-blue shag and beanie, faded teal hoodie under a black denim jacket, one earphone, bass-string bracelet.
 - Contract: ownership of the bandmate's unreleased track.

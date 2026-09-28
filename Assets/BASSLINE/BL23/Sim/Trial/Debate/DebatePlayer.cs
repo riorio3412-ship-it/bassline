@@ -185,6 +185,7 @@ namespace BL23.Sim
                     {
                         if (player) { D.Hits++; T.Valid++; T.Influence = MathX.Clamp01(T.Influence + (ev.Outcome == "collapse" ? 0.1f : 0.07f)); }
                         if (P != null && P.True) P.State = PlateState.Sealed;
+                        if (player) Ally(sim, T, false);
                         if (ev.Fallen != null) MarkCollapsed(sim, T, ev.Fallen, by, ev.Why);
                         if (ev.Flip != null) FlipPlate(sim, T, ev.Flip, by);
                         if (ev.Sealed != null) SealTheory(sim, T, ev.Sealed, by, ev.Why);
@@ -230,6 +231,7 @@ namespace BL23.Sim
                             string who = voices.Where(x => x != Cast.Player && Jurors(S, T).Contains(x)).OrderBy(x => DH(S, "scoff:" + th.Id + ":" + m?.Misses + ":" + x)).FirstOrDefault() ?? th.Holder;
                             if (Jurors(S, T).Contains(who))
                                 DSay(sim, T, who, "re_scoff", null, BeatKind.Line, "scoff", th.TrialClaim, (Cast.Get(who)?.P.Pride ?? 0.5f) >= 0.6f ? Emotion.Smirk : Emotion.Neutral, Anim.CrossArms, 0.45f, th.Id);
+                            if (player) Ally(sim, T, true);
                             var back = Jurors(S, T).Where(x => x != th.Holder && !th.Supporters.Contains(x) && D.Reading[x] == "?").OrderBy(x => DH(S, "lean:" + th.Id + ":" + th.Misses + ":" + x)).FirstOrDefault();
                             if (back != null) { th.Supporters.Add(back); if (th.Target != null) D.Reading[back] = th.Target; }
                         }
@@ -239,6 +241,19 @@ namespace BL23.Sim
             SettleCheck(sim, T, m, by, ev);
             if (player && m != null && m.State == "lit" && (ev.Outcome == "miss" || ev.Outcome == "support-wrong" || ev.Outcome == "refuse")) Stuck(sim, T, m);
             return ev;
+        }
+
+        /// <summary>서윤 looks after 민혁 (Owner traits): after a miss she steadies him, now and then she marks a hit. Only while
+        /// she is at a stand, not the one on trial, and not on the wrong end of his last plate.</summary>
+        static void Ally(Simulation sim, TrialState T, bool miss)
+        {
+            var S = sim.S; var D = T.Debate; const string who = "P03";
+            if (!Jurors(S, T).Contains(who) || who == D.Target || who == D.Accused) return;
+            string tag = "ally:" + (D.Active ?? "-") + ":" + miss;
+            if (D.Seen.Contains(tag) || D.Seen.Count(x => x.StartsWith("ally:")) >= 4) return;
+            if (DH(S, "ally:" + D.Decisions.Count + ":" + miss) >= (miss ? 0.6 : 0.3)) return;
+            D.Seen.Add(tag);
+            DSay(sim, T, who, miss ? "ally_encourage" : "ally_praise", null, BeatKind.Line, "ally", null, Emotion.Smile, Anim.Talk, 0.35f);
         }
 
         /// <summary>A floor that keeps missing does not idle (§6.11): a hint after two misses, the plate after four, and at six
@@ -264,7 +279,7 @@ namespace BL23.Sim
             th.State = "collapsed";
             var tc = T.Claims.FirstOrDefault(c => c.Id == th.TrialClaim); if (tc != null) { tc.Status = "refuted"; tc.RefutedBy = by; tc.RefuteWhy = CaseBoard.Plain(why); }
             if (!quiet) DResult(T, BeatKind.Break, by, $"{Given(th.Holder)}의 말이 무너졌다 — {why}", "Contradict", th.TrialClaim, "break", 0.8f, th.Id);
-            if (th.Lie != null && th.Holder == D.Target) { var lie = D.Lies.FirstOrDefault(l => l.Id == th.Lie); if (lie != null) lie.Broken = true; D.Mind.Pressure++; }
+            if (th.Lie != null && th.Holder == D.Target) { var lie = D.Lies.FirstOrDefault(l => l.Id == th.Lie); if (lie != null) lie.Broken = true; D.Mind.Pressure++; Publish(T, th, null); }
         }
 
         /// <summary>After a fall: the room turns, the named one breathes, the holder takes it (the honest concede, the proud dig in).</summary>
@@ -336,7 +351,7 @@ namespace BL23.Sim
             var core = CoreOf(D, m, all);
             bool answered = core != null ? core.State == "collapsed" : all.Any(t => t.State == "sealed") && !all.Any(t => t.State == "standing" && !t.True);
             if (!answered) return;
-            string how = ev?.Outcome == "seal" ? "seal" : ev?.Outcome == "flip-laid" ? "flip" : "collapse";
+            string how = ev?.Outcome == "seal" ? "seal" : ev?.Outcome == "flip-laid" ? "flip" : ev?.Outcome == "withdrawn" ? "withdrawn" : "collapse";
             Settle(sim, T, m, by, how);
         }
 
@@ -358,7 +373,8 @@ namespace BL23.Sim
             { t.State = "collapsed"; var tc = T.Claims.FirstOrDefault(c => c.Id == t.TrialClaim); if (tc != null) tc.Status = "refuted"; }
             foreach (var t in m.Theories.Select(id => DTheory(D, id)).Where(t => t != null && t.State == "standing" && t.True && t.Answers != null))
             { t.State = "sealed"; var tc = T.Claims.FirstOrDefault(c => c.Id == t.TrialClaim); if (tc != null) tc.Status = "supported"; }
-            AddPlaque(sim, T, m, PlaqueText(sim, D, m), PlaqueProp(D, m), by ?? "room");
+            if (how == "withdrawn") AddPlaque(sim, T, m, SoftPlaque(sim, D, m), null, by ?? "room");
+            else AddPlaque(sim, T, m, PlaqueText(sim, D, m), PlaqueProp(D, m), by ?? "room");
             D.FloorOpen = false; D.FloorTheory = null;
             if (T.PendingPrompt != null && T.PendingPrompt.StartsWith("chain:")) T.PendingPrompt = null;
             D.Step = "settle";
@@ -456,7 +472,7 @@ namespace BL23.Sim
                 case Basis.Guess:
                     DSay(sim, T, th.Holder, "ask_guess", null, BeatKind.Line, "recant", th.TrialClaim, Emotion.Sad, Anim.Shrug, 0.4f, th.Id);
                     th.Conviction = 0.1f; foreach (var s in th.Supporters.Where(x => x != D.Target).ToList()) { th.Supporters.Remove(s); if (th.Target != null && D.Reading[s] == th.Target) D.Reading[s] = "?"; }
-                    if (!th.True) { th.State = "collapsed"; var tc = T.Claims.First(c => c.Id == th.TrialClaim); tc.Status = "retracted"; DResult(T, BeatKind.Result, by, $"{Given(th.Holder)}이(가) 가설을 거둔다 — 본 것이 아니라 짐작이었다", "Conditional", th.TrialClaim, intensity: 0.5f, theory: th.Id); SettleCheck(sim, T, m, by, new ShowEval { Outcome = "collapse" }); return "withdrawn"; }
+                    if (!th.True) { th.State = "collapsed"; var tc = T.Claims.First(c => c.Id == th.TrialClaim); tc.Status = "retracted"; DResult(T, BeatKind.Result, by, $"{Given(th.Holder)}이(가) 가설을 거둔다 — 본 것이 아니라 짐작이었다", "Conditional", th.TrialClaim, intensity: 0.5f, theory: th.Id); SettleCheck(sim, T, m, by, new ShowEval { Outcome = "withdrawn" }); return "withdrawn"; }
                     return "guess";
                 case Basis.Hearsay:
                     DSay(sim, T, th.Holder, "ask_hearsay", new Dictionary<string, string> { { "with", "@" + (th.From ?? D.Target) } }, BeatKind.Line, "answer", th.TrialClaim, Emotion.Neutral, Anim.Talk, 0.4f, th.Id);
@@ -650,7 +666,7 @@ namespace BL23.Sim
         {
             var T = S.Trial; var D = T?.Debate; if (D == null) return false;
             var th = TheoryOfClaim(D, claimId); var P = PlateOfCard(D, cardId); if (th == null || P == null) return false;
-            if (D.Act == "act3" && th.Id == D.Mind.Counter) return DuelAnswers(S, D, th, P) != null;
+            if (D.Act == "act3" && th.Id == D.Mind.Counter) return DuelAnswers(S, D, th, P) != null && !Stale(S, D, th, P);
             var ev = Evaluate(S, T, th, P); return ev.Outcome == "collapse" || ev.Outcome == "seal";
         }
 

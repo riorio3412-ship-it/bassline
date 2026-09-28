@@ -564,6 +564,7 @@ namespace BL23.Sim
         internal static float PublicFit(Simulation sim, TrialState T, string accused)
         {
             if (accused == null) return 0;
+            if (T.Debate != null) return DebatePublicFit(T, accused);
             var S = sim.S; float f = 0.3f;
             foreach (var p in T.Public)
             {

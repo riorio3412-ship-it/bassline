@@ -166,7 +166,7 @@ namespace BL23.Sim
             var pool = D.Deck.Plates.FirstOrDefault(p => p.Kind == PlateKind.Trace && p.Room == D.FoundRoom && p.True);
             string seer = PickHolder(sim, T, jur, x => (Examined(S, x, D.Victim) ? 1.5 : 0) + (body != null && body.FoundBy == x ? 1 : 0) + (FoundPlate(S, x, pool) ? 0.6 : 0) + (1 - Obs(x)) * 0.4, "seer:" + m.Id, D.Target);
             if (seer == null || k?.Presented == null) return;
-            string frag = pool != null ? pool.Face.Split('(')[0].Trim().TrimEnd('.') + "." : Reg(seer, "쓰러진 자리 그대로였어요.", "쓰러진 자리 그대로였어.");
+            string frag = pool != null ? Reg(seer, $"{pool.Title}도 거기 있었어요.", $"{pool.Title}도 거기 있었어.") : Reg(seer, "쓰러진 자리 그대로였어요.", "쓰러진 자리 그대로였어.");
             var t1 = Voice(sim, T, m, seer, Family.Self, Examined(S, seer, D.Victim) ? Basis.Saw : Basis.Guess, k.Presented, "th_place_found",
                 new Dictionary<string, string> { { "place", S.RoomName(D.FoundRoom) }, { "fragment", frag } }, frag, pool?.Id, false, key: "claim", emo: Emotion.Neutral, gesture: Anim.Talk);
             // heard it from somewhere else
@@ -296,8 +296,11 @@ namespace BL23.Sim
             if (coin != null && !m.Theories.Select(id => DTheory(D, id)).Any(t => t.Pin == coin.Id))
             {
                 var held = coin.Props.FirstOrDefault(p => p.Kind == PropKind.Held);
+                string heldKor = held != null ? ItemCatalog.Get(held.Item)?.Kor ?? held.Item : "", nm = sim.CallName(coin.Witness, coin.Points);
+                string spoken = held != null ? Reg(coin.Witness, $"{ClockFmt.Vague(coin.T0)} {S.RoomName(coin.Room)}에서 {nm}이(가) {heldKor}을(를) 들고 있었어요.", $"{ClockFmt.Vague(coin.T0)} {S.RoomName(coin.Room)}에서 {nm}이(가) {heldKor} 들고 있었어.")
+                                             : Reg(coin.Witness, $"{ClockFmt.Vague(coin.T0)} {S.RoomName(coin.Room)}에서 {nm}을(를) 봤어요.", $"{ClockFmt.Vague(coin.T0)} {S.RoomName(coin.Room)}에서 {nm} 봤어.");
                 var t = Voice(sim, T, m, coin.Witness, Family.Blame, Basis.Saw, new Prop { Kind = PropKind.Culprit, A = coin.Points, B = D.Victim, Value = "opportunity" }, held != null ? "th_held" : "th_near",
-                    new Dictionary<string, string> { { "time", ClockFmt.Vague(coin.T0) }, { "place", S.RoomName(coin.Room) }, { "target", "@" + coin.Points }, { "item", held != null ? ItemCatalog.Get(held.Item)?.Kor ?? held.Item : "" }, { "fragment", coin.Face.Split('—')[0].Trim() } },
+                    new Dictionary<string, string> { { "time", ClockFmt.Vague(coin.T0) }, { "place", S.RoomName(coin.Room) }, { "target", "@" + coin.Points }, { "item", heldKor }, { "fragment", LineBank.FixParticles(spoken) } },
                     coin.Face, coin.Id, false, coin.Points, leans: true, key: "claim", emo: Emotion.Neutral, gesture: Anim.Point);
                 Protest(sim, T, coin.Points);
             }
@@ -313,7 +316,7 @@ namespace BL23.Sim
                 {
                     double t0 = D.ClaimFrom >= 0 ? D.ClaimFrom : D.KillClock - 30, t1 = D.ClaimTo >= 0 ? D.ClaimTo : D.KillClock + 30;
                     string with = D.ClaimWith.FirstOrDefault(x => jur.Contains(x)) ?? fa?.Witness;
-                    string text = lie?.Text ?? DebateLines.Say(S, D.Target, "th_alibi_culprit", new Dictionary<string, string> { { "place", S.RoomName(room) }, { "time", ClockFmt.Vague(D.KillClock) }, { "with", with != null ? sim.CallName(D.Target, with) : "누구든" } }, D.SpokenKeys, D.Seq.ToString());
+                    string text = lie?.Text != null ? DebateLines.InRegister(D.Target, lie.Text) : DebateLines.Say(S, D.Target, "th_alibi_culprit", new Dictionary<string, string> { { "place", S.RoomName(room) }, { "time", ClockFmt.Vague(D.KillClock) }, { "with", with != null ? sim.CallName(D.Target, with) : "누구든" } }, D.SpokenKeys, D.Seq.ToString());
                     if (lie != null) lie.Used = true;
                     var alibi = Voice(sim, T, m, D.Target, Family.Self, Basis.Saw, new Prop { Kind = PropKind.AtPlace, A = D.Target, Room = room, T0 = t0, T1 = t1, Value = "window-cover" }, null, null,
                         null, fa?.Id, false, lie: lie?.Id ?? "story", key: "claim", emo: Emotion.Neutral, gesture: Anim.Talk, rawText: text);
@@ -392,7 +395,7 @@ namespace BL23.Sim
                         var frame = D.Deck.Plates.FirstOrDefault(p => p.Role == PlateRole.Frame && p.Root.StartsWith("trace:"));
                         return $"피로 쓴 글자는 {V}이(가) 남긴 것이 아니다" + (frame?.Points != null ? $" — 누군가 {Given(frame.Points)}에게 뒤집어씌우려 했다." : ".");
                     }
-                case "Place": return $"{V}은(는) {S.RoomName(D.KillRoom)}에서 공격당했다. 쓰러진 곳은 {S.RoomName(D.FoundRoom)}이다.";
+                case "Place": return D.Moved ? $"{V}은(는) {S.RoomName(D.KillRoom)}에서 공격당했다. 누군가 {S.RoomName(D.FoundRoom)}(으)로 옮겼다." : $"{V}은(는) {S.RoomName(D.KillRoom)}에서 공격당했다. 쓰러진 곳은 {S.RoomName(D.FoundRoom)}이다.";
                 case "Tod": return $"{V}이(가) 공격당한 건 {ClockFmt.Vague(D.KillClock)}이다 — 시신의 온기는 꾸며진 것이다.";
                 case "Seal": return $"{S.RoomName(D.FoundRoom)}은(는) 밀실이 아니었다 — 밖에서 잠글 수 있었다.";
                 case "Swap": return "시신 옆의 물건은 흉기가 아니다 — 피는 겉에만 발려 있었다.";
@@ -422,6 +425,16 @@ namespace BL23.Sim
             return null;
         }
 
+        /// <summary>A riddle closed only because its first reading was a guess the holder took back: engrave what is known, not more.</summary>
+        static string SoftPlaque(Simulation sim, DebateState D, Mystery m)
+        {
+            var S = sim.S; var core = D.Theories.FirstOrDefault(t => t.Mystery == m.Id && !t.True && t.State == "collapsed");
+            var truth = D.Theories.FirstOrDefault(t => t.Mystery == m.Id && t.True && t.State != "collapsed");
+            string first = core != null ? $"{Given(core.Holder)}의 말은 짐작이었다" : "처음의 말은 짐작이었다";
+            if (m.Trick == "Place" && truth != null) return $"{first} — {Given(truth.Holder)}은(는) {S.RoomName(D.KillRoom)} 쪽에서 소리를 들었다. 아직 확인되지는 않았다.";
+            return first + ". 아직 확인된 것은 없다.";
+        }
+
         static DamageType WoundDmg(Simulation sim, DebateState D) => P(D.Deck.Plates.FirstOrDefault(p => p.Kind == PlateKind.Body)?.Props.FirstOrDefault(p => p.Kind == PropKind.WeaponType)?.Value);
 
         /// <summary>민혁's summary of a settled riddle, spoken (4막): the plaque in his own words.</summary>
@@ -437,7 +450,7 @@ namespace BL23.Sim
                         var frame = D.Deck.Plates.FirstOrDefault(p => p.Role == PlateRole.Frame && p.Root.StartsWith("trace:"));
                         return LineBank.FixParticles($"피로 쓴 글자는 {V}이(가) 남긴 게 아니었어요. 거의 즉사였으니까요." + (frame?.Points != null ? $" 누군가 {Call(frame.Points)}에게 뒤집어씌우려고 써 둔 거예요." : ""));
                     }
-                case "Place": return LineBank.FixParticles($"{V}은(는) {S.RoomName(D.KillRoom)}에서 공격당했고, {S.RoomName(D.FoundRoom)}까지 가서 쓰러졌어요.");
+                case "Place": return LineBank.FixParticles(D.Moved ? $"{V}은(는) {S.RoomName(D.KillRoom)}에서 공격당했고, 누군가 {S.RoomName(D.FoundRoom)}(으)로 옮겼어요." : $"{V}은(는) {S.RoomName(D.KillRoom)}에서 공격당했고, {S.RoomName(D.FoundRoom)}까지 가서 쓰러졌어요.");
                 case "Tod": return LineBank.FixParticles($"{V}이(가) 공격당한 건 {ClockFmt.Vague(D.KillClock)}이에요. 시신의 온기는 꾸며진 거였고요.");
                 case "Seal": return LineBank.FixParticles($"{S.RoomName(D.FoundRoom)}은(는) 밀실이 아니었어요. 밖에서도 잠글 수 있었어요.");
                 case "Swap": return "시신 옆의 물건은 흉기가 아니었어요. 피는 나중에 겉에만 발라 둔 거예요.";

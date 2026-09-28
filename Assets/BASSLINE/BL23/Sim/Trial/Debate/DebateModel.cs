@@ -223,6 +223,8 @@ namespace BL23.Sim
         public List<string> Fallen = new List<string>();         // name plates turned down (proven elsewhere when it happened)
         public List<string> Alone = new List<string>();          // said they were alone at the hour (the roll call)
         public List<string> Paired = new List<string>();         // "a|b": two people who each said they were with the other
+        public Dictionary<string, int> Said = new Dictionary<string, int>();   // the room each person named at the roll call
+        public bool Moved;                                       // the body was moved after the attack (the incident's record)
         public int FloorAt = -1;                                 // T.Beats count when the floor opened (a pass leaves no action behind it)
         public int ActionAt = -1;                                // T.Beats count at the last player action
     }

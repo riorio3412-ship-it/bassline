@@ -36,7 +36,7 @@ namespace BL23.Sim
             if (pusher == null) return;
             string frag, pin = null, lie = null; Basis basis = Basis.Guess;
             var sawLie = D.Lies.FirstOrDefault(l => l.Topic == "saw" && !l.Used);
-            if (pusher == D.Target && P == D.Scapegoat && sawLie != null) { frag = sawLie.Text; lie = sawLie.Id; sawLie.Used = true; basis = Basis.Saw; D.Mind.LiesUsed.Add(sawLie.Id); }
+            if (pusher == D.Target && P == D.Scapegoat && sawLie != null) { frag = DebateLines.InRegister(pusher, sawLie.Text); lie = sawLie.Id; sawLie.Used = true; basis = Basis.Saw; D.Mind.LiesUsed.Add(sawLie.Id); }
             else if (coin != null && coin.Points == P && (pusher == coin.Witness || pusher == D.Target)) { frag = pusher == coin.Witness ? coin.Face.Split('—')[0].Trim() + "." : $"{Given(coin.Witness)}이(가) 봤대요. {coin.Face.Split('—')[0].Trim()}."; pin = coin.Id; basis = pusher == coin.Witness ? Basis.Saw : Basis.Hearsay; }
             else frag = RelFragment(sim, D, pusher, P);
             var th = Voice(sim, T, who, pusher, Family.Blame, basis, new Prop { Kind = PropKind.Culprit, A = P, B = D.Victim, Value = "push" }, "push_scapegoat",
@@ -61,6 +61,8 @@ namespace BL23.Sim
         {
             var S = sim.S; var r = RelOf(S, P, D.Victim);
             bool polite = Cast.Get(who)?.Speech.PoliteDefault ?? true;
+            if (D.Said.TryGetValue(P, out var room) && D.Alone.Contains(P))
+                return LineBank.FixParticles(polite ? $"{Given(P)}, {S.RoomName(room)}에 있었다면서요? 본 사람이 아무도 없잖아요." : $"{Given(P)}, {S.RoomName(room)}에 있었다며? 본 사람이 아무도 없잖아.");
             if (r != null && (r.Grudge > 0.2f || r.Like < -0.2f)) return polite ? $"{Given(P)}, {Given(D.Victim)}하고 사이 안 좋았잖아요." : $"{Given(P)}, {Given(D.Victim)}하고 사이 안 좋았잖아.";
             return polite ? "그 시간에 어디 있었는지, 아직 아무도 못 들었잖아요." : "그 시간에 어디 있었는지 아직 아무도 못 들었잖아.";
         }
@@ -203,14 +205,22 @@ namespace BL23.Sim
             return new Prop { Kind = PropKind.Culprit, A = D.Target, B = D.Victim, Value = "demand" };
         }
 
+        /// <summary>The plate that answers this counter — a fresh one before one already laid in this duel.</summary>
+        internal static Plate DuelAnswer(GameState S, DebateState D, Theory th, string plan = null)
+            => D.Deck.Plates.Where(p => DuelAnswers(S, D, th, p, plan) != null).OrderBy(p => D.Mind.Used.Contains(p.Id) ? 1 : 0).ThenBy(p => p.N).FirstOrDefault();
+
+        /// <summary>A plate already laid in this duel while a fresh one also answers: the court wants the other one.</summary>
+        internal static bool Stale(GameState S, DebateState D, Theory th, Plate P, string plan = null)
+            => D.Mind.Used.Contains(P.Id) && D.Deck.Plates.Any(o => o.Id != P.Id && !D.Mind.Used.Contains(o.Id) && DuelAnswers(S, D, th, o, plan) != null);
+
         /// <summary>Does plate P answer counter th? Returns the written reason, or null. Only proof answers (a true plate or a
-        /// turned one), and a plate answers once per duel.</summary>
+        /// turned one); a plate already laid may answer again only when no fresh one does (<see cref="Stale"/>).</summary>
         internal static string DuelAnswers(GameState S, DebateState D, Theory th, Plate P, string plan = null)
         {
             if (th?.Claim == null || P == null) return null;
             plan = plan ?? D.Mind.Counters.LastOrDefault();
-            // a plate answers one counter; the final demand may take the strongest one again (the decisive photograph)
-            bool proof = P.True || P.State == PlateState.Flipped; if (!proof || (D.Mind.Used.Contains(P.Id) && plan != "final")) return null;
+            // any proof may answer (the same photograph can undo a lie and the fallback behind it); a turned fake counts as proof
+            bool proof = P.True || P.State == PlateState.Flipped; if (!proof) return null;
             var c = th.Claim; string X = D.Target;
             string Implicates()
             {
@@ -266,12 +276,14 @@ namespace BL23.Sim
             if (next.StartsWith("fallback:")) { var f = D.Fallbacks.FirstOrDefault(x => "fallback:" + x.Order == next); if (f != null) f.Used = true; M.Fallback++; }
             bool final = next == "final";
             float lit = M.Candles == 0 ? 0 : M.CandlesLit / (float)M.Candles;
-            var emo = final ? Emotion.Angry : lit > 0.66f ? ((Cast.Get(D.Target)?.P.Pride ?? 0.5f) >= 0.6f ? Emotion.Smirk : Emotion.Neutral) : lit > 0.34f ? Emotion.Angry : Emotion.Fear;
+            bool retreat = next.StartsWith("fallback:");
+            var emo = final ? Emotion.Angry : retreat ? (lit > 0.5f ? Emotion.Angry : Emotion.Fear)
+                    : lit > 0.66f ? ((Cast.Get(D.Target)?.P.Pride ?? 0.5f) >= 0.6f ? Emotion.Smirk : Emotion.Neutral) : lit > 0.34f ? Emotion.Angry : Emotion.Fear;
             Theory th;
             if (final || text == null)
                 th = Voice(sim, T, duel, D.Target, Family.Self, Basis.Saw, claim, "duel_demand", new Dictionary<string, string> { { "victim", "@" + D.Victim } }, null, null, false, key: "counter", emo: emo, gesture: final ? Anim.Slam : Anim.CrossArms);
             else
-                th = Voice(sim, T, duel, D.Target, Family.Self, Basis.Saw, claim, null, null, null, null, false, lie: lieId, key: "counter", emo: emo, gesture: Anim.CrossArms, rawText: next.StartsWith("fallback:") ? RetreatText(sim, T, next, text) : text);
+                th = Voice(sim, T, duel, D.Target, Family.Self, Basis.Saw, claim, null, null, null, null, false, lie: lieId, key: "counter", emo: emo, gesture: retreat ? Anim.Shrug : Anim.CrossArms, rawText: next.StartsWith("fallback:") ? RetreatText(sim, T, next, text) : DebateLines.InRegister(D.Target, text));
             M.Counter = th.Id;
             D.Step = "counter-floor";
         }
@@ -280,7 +292,7 @@ namespace BL23.Sim
         static string RetreatText(Simulation sim, TrialState T, string plan, string story)
         {
             bool polite = Cast.Get(T.Debate.Target)?.Speech.PoliteDefault ?? true;
-            return (polite ? "…알았어요, 그건 인정할게요. " : "…알았어, 그건 인정할게. ") + story;
+            return (polite ? "…알았어요, 그건 인정할게요. " : "…알았어, 그건 인정할게. ") + DebateLines.InRegister(T.Debate.Target, story);
         }
 
         static void DuelFloor(Simulation sim, TrialState T)
@@ -303,6 +315,16 @@ namespace BL23.Sim
             string plan = M.Counters.LastOrDefault();
             string why = DuelAnswers(S, D, th, P, plan);
             var slots = new Dictionary<string, string> { { "holder", "@" + th.Holder }, { "plate", $"은판 {P.N}, 「{P.Title}」" } };
+            if (why != null && Stale(S, D, th, P, plan))
+            {
+                // the same photograph twice: no penalty, but the accused shrugs it off and the floor stays open
+                if (player) DSay(sim, T, Cast.Player, "p_show", slots, BeatKind.Line, "p_show", th.TrialClaim, Emotion.Neutral, Anim.Present, 0.55f, th.Id, P.Id);
+                DResult(T, BeatKind.Result, null, "그 은판은 이미 한 번 내밀었다 — 같은 은판으로 두 번 몰 수는 없다. 다른 은판이 있을 것이다.", "Irrelevant", th.TrialClaim, intensity: 0.4f, theory: th.Id, plate: P.Id);
+                DSay(sim, T, D.Target, "duel_stale", null, BeatKind.Line, "scoff", th.TrialClaim, Emotion.Smirk, Anim.CrossArms, 0.5f, th.Id);
+                if (player) Decided(D, "stale");
+                D.Step = "counter-floor";
+                return new Result { R = LogicResult.Irrelevant, Text = "그 은판은 이미 한 번 내밀었다 — 다른 은판이 있을 것이다" };
+            }
             if (player) DSay(sim, T, Cast.Player, "p_show", slots, BeatKind.Line, why != null ? "p_object" : "p_show", th.TrialClaim, why != null ? Emotion.Angry : Emotion.Neutral, Anim.Present, why != null ? 0.85f : 0.6f, th.Id, P.Id);
             else DSay(sim, T, by, "npc_show", slots, BeatKind.Line, "object", th.TrialClaim, Emotion.Angry, Anim.Present, 0.7f, th.Id, P.Id);
             if (why == null)
@@ -322,6 +344,7 @@ namespace BL23.Sim
             M.Used.Add(P.Id); if (P.True) P.State = PlateState.Sealed;
             th.State = "collapsed"; var tc = T.Claims.First(c => c.Id == th.TrialClaim); tc.Status = "refuted"; tc.RefutedBy = by; tc.RefuteWhy = CaseBoard.Plain(why);
             if (th.Lie != null) { var lie = D.Lies.FirstOrDefault(l => l.Id == th.Lie); if (lie != null) lie.Broken = true; }
+            Publish(T, th, P);
             DResult(T, BeatKind.Break, by, $"{Given(D.Target)}의 말이 무너졌다 — {why}", "Contradict", th.TrialClaim, "break", 0.85f, th.Id, P.Id);
             FillKnot(D, plan, P);
             M.CandlesLit = Math.Max(0, M.CandlesLit - 1); M.Pressure++;
@@ -337,6 +360,15 @@ namespace BL23.Sim
             if (M.Counters.Count == 1 || M.CandlesLit == 1) Bystander(sim, T, "re_duel_gasp", "duel" + M.CandlesLit, by);
             D.FloorOpen = false; D.Step = "counter";
             return new Result { R = LogicResult.Contradict, Text = CaseBoard.Plain(why), Valid = true, Break = true };
+        }
+
+        /// <summary>What the duel proved goes on the public record (the clock-and-floor-plan round and its fit read it): the
+        /// answering plate's own facts once, and the accused's broken words as a lie.</summary>
+        internal static void Publish(TrialState T, Theory th, Plate P)
+        {
+            if (P != null && P.True && !T.PublicRoots.Contains("plate:" + P.Id)) { T.PublicRoots.Add("plate:" + P.Id); T.Public.AddRange(P.Props.Select(p => p.Clone())); }
+            if (th?.Lie != null && th.Holder != null && !T.Public.Any(p => p.Kind == PropKind.Lie && p.A == th.Holder && p.Value == th.TrialClaim))
+                T.Public.Add(new Prop { Kind = PropKind.Lie, A = th.Holder, Value = th.TrialClaim });
         }
 
         static string CounterMissWhy(DebateState D, Theory th, Plate P)
@@ -369,7 +401,7 @@ namespace BL23.Sim
         static bool DuelAlly(Simulation sim, TrialState T, Theory th, string plan)
         {
             var S = sim.S; var D = T.Debate; var jur = Jurors(S, T);
-            var answer = D.Deck.Plates.OrderBy(p => p.N).FirstOrDefault(p => DuelAnswers(S, D, th, p, plan) != null);
+            var answer = DuelAnswer(S, D, th, plan);
             if (answer == null) return false;
             string holder = answer.FoundBy != null && jur.Contains(answer.FoundBy) && answer.FoundBy != D.Target ? answer.FoundBy : answer.Witness != null && jur.Contains(answer.Witness) && answer.Witness != D.Target ? answer.Witness : null;
             if (holder == null) { if (PlayerIn(S, T)) DNarrate(T, $"(은판 {answer.N}, 「{answer.Title}」…?)", BeatKind.Inner); return true; }
@@ -432,7 +464,7 @@ namespace BL23.Sim
             Decide(D, ActionKind.Listen, th.Id, false); Decided(D, "pass");
             M.Passes++; D.Passes++;
             string plan = M.Counters.LastOrDefault();
-            var answer = D.Deck.Plates.OrderBy(p => p.N).FirstOrDefault(p => DuelAnswers(S, D, th, p, plan) != null);
+            var answer = DuelAnswer(S, D, th, plan);
             var jur = Jurors(S, T);
             string holder = answer == null ? null : answer.FoundBy != null && jur.Contains(answer.FoundBy) && answer.FoundBy != D.Target ? answer.FoundBy : answer.Witness != null && jur.Contains(answer.Witness) ? answer.Witness : null;
             if (M.Passes == 1)

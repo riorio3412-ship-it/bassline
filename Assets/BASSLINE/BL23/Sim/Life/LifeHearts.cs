@@ -223,7 +223,7 @@ namespace BL23.Sim
                     break;
                 }
             }
-            // a resident drawn to 민혁 (stage 2+, an attraction) lets it show — never 예담, 수아 or 진우
+            // a resident drawn to 민혁 (stage 2+, an attraction) lets it show (anyone: the owner lifted the exclusions)
             if (mod >= 11 * 60 && mod <= 21 * 60 && mod % 60 == 45)
             {
                 foreach (var a in S.LivingNpcs.OrderBy(x => x.Id, StringComparer.Ordinal))

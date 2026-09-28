@@ -72,7 +72,9 @@ namespace BL23.Sim
             D.Standing = T.Participants.Where(x => x != Cast.Player && S.A(x)?.Alive == true).OrderBy(x => x, StringComparer.Ordinal).ToList();
             // the House's record of the body (read at the 서막, like every record: exact, and silent about who)
             var vict = S.A(D.Victim); var main = vict?.Body.Wounds.Where(w => !w.Postmortem).OrderByDescending(w => w.Sev).ThenBy(w => w.Tick).FirstOrDefault();
-            D.Record = main != null ? WoundText.Region(main.Region) + "에 " + (Violence.Phrase(main) ?? WoundText.Type(main.Type)) : null;
+            string phrase = main != null ? Violence.Phrase(main) ?? WoundText.Type(main.Type) : null, region = main != null ? WoundText.Region(main.Region) : null;
+            D.Record = main == null ? null : phrase.StartsWith(region) ? phrase : region + "에 " + phrase;
+            D.Moved = inc.BodyMoved && C.KillRoom != C.FoundRoom;
             D.Act = "prologue"; D.Step = "open";
             S.Log("DebateBegin", null, data: $"inc={inc.Id} plates={deck.Plates.Count} fakes={deck.FakeCount} riddles={D.Mysteries.Count} trick={D.Trick ?? "-"} lies={D.Lies.Count}");
         }
@@ -435,6 +437,18 @@ namespace BL23.Sim
         /// 민혁's 지목 by trust. Family and lovers never vote their person; nobody votes for themselves; the culprit votes
         /// the likeliest other name.
         /// </summary>
+        /// <summary>How well a named culprit fits what the 심판 proved in public (never the hidden truth): the knots held on
+        /// them in the duel, their own words broken, fakes still pointing at them; a confirmed alibi pulls it down.</summary>
+        internal static float DebatePublicFit(TrialState T, string accused)
+        {
+            var D = T.Debate; var M = D.Mind; float f = 0.25f;
+            if (M != null && accused == M.Actor) f += 0.2f * ((M.Chance ? 1 : 0) + (M.Means ? 1 : 0) + (M.Deceit ? 1 : 0));
+            f += 0.1f * D.Theories.Count(t => t.Holder == accused && t.Lie != null && t.State == "collapsed");
+            f += 0.05f * D.Deck.Plates.Count(p => !p.True && p.State == PlateState.Shown && p.Points == accused);
+            f -= 0.5f * D.Plaques.Count(q => q.Prop != null && q.Prop.Kind == PropKind.AtPlace && q.Prop.Value == "window-cover" && q.Prop.A == accused);
+            return MathX.Clamp01(f);
+        }
+
         static string DebateVoteOf(Simulation sim, TrialState T, string j)
         {
             var S = sim.S; var D = T.Debate;

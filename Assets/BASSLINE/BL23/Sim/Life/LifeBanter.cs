@@ -16,18 +16,22 @@ namespace BL23.Sim
     ///   flirt / love_hint / flirt_react   only with an attraction tie (crush, lover, romance)
     ///   dirty_joke / react_dirty    close, casual friends whose voice has it
     ///   react_swear                 answering a line that swore
-    /// GUARDRAILS enforced here, in code (the content already follows them):
-    ///   · no flirt / love_hint / flirt_react / dirty_joke / react_dirty with 예담 P17, 수아 P12 or 진우 P02 as speaker or listener;
-    ///   · no joke, tease, insult or gloat line that mentions 세나's hand (P13 listening or talked about) — another variant, or plain talk.
+    /// Owner decision (2026-09-28): every resident is an adult (20+), so the per-character exclusions are lifted — anyone may flirt,
+    /// tell a dirty joke or be the butt of one, 예담 P17 · 수아 P12 · 진우 P02 · 서윤 P03 included, and 세나's hand is no longer
+    /// filtered. What stays out is content, not people (the voice packs follow it): no explicit sex acts, no jokes about sexual
+    /// violence, no hate against real groups, and nothing that makes a youthful look sexual.
     /// Swearing itself is allowed (the owner wants it; there is no filter or toggle).
     /// Also the lying keys: LifeLieKey (Testimony) — a resident with lie_&lt;key&gt; lies in their own voice, with their tell.
     /// </summary>
     public sealed partial class Simulation
     {
-        /// <summary>Never sexual or romantic toward, from or about these three (the voice authors' and the owner's exclusion).</summary>
-        public static bool NoRomance(string id) => id == "P17" || id == "P12" || id == "P02";
+        /// <summary>Residents kept out of romance and dirty jokes. Empty since the owner lifted the per-character exclusions (all adults);
+        /// kept as the one switch every romance path asks.</summary>
+        public static bool NoRomance(string id) => false;
+        /// <summary>Residents never on the receiving end of a dirty joke — none (see NoRomance).</summary>
+        public static bool NoDirtyTarget(string id) => NoRomance(id);
         static readonly HashSet<string> RomanticKeys = new HashSet<string> { "flirt", "love_hint", "flirt_react", "dirty_joke", "react_dirty" };
-        static readonly HashSet<string> MockKeys = new HashSet<string> { "tease", "tease_react", "joke", "joke_react", "insult", "insult_back", "gloat", "gloat_react", "outburst", "dirty_joke" };
+        static readonly HashSet<string> MockKeys = new HashSet<string> { "tease", "tease_react", "joke", "joke_react", "insult", "insult_back", "gloat", "gloat_react", "outburst", "dirty_joke", "fake_cry", "brush_off" };
         static readonly Regex _swear = new Regex("(씨발|시발|씨이|좆|존나|개새|새끼|미친|뒈져|꺼져|젠장|빌어먹)", RegexOptions.Compiled);
         static readonly Regex _handMock = new Regex("(의수|오른손|왼손|손목|손가락|쇠손|가짜 손|손이|손을|손은|손도|손만|손 하나)", RegexOptions.Compiled);
 
@@ -64,14 +68,18 @@ namespace BL23.Sim
                         case "gloat": key = VoiceHas(sp.Id, "gloat_react", li.Id) ? "gloat_react" : null; break;
                         case "flirt": case "love_hint": key = romance && VoiceHas(sp.Id, "flirt_react", li.Id) ? "flirt_react" : "small_talk"; break;
                         case "dirty_joke": key = VoiceHas(sp.Id, "react_dirty", li.Id) ? "react_dirty" : null; break;
+                        case "fake_cry": key = LineBank.Has("ANY", "react_fakecry") ? "react_fakecry" : null; break;
                         case "scared": if (VoiceHas(sp.Id, "comfort", li.Id)) { key = "comfort"; slots["t"] = "@" + li.Id; } break;
                     }
                     if (lastText != null && _swear.IsMatch(lastText) && VoiceHas(sp.Id, "react_swear", li.Id) && rng.Chance(0.5)) key = "react_swear";
+                    // 라온 does not warm to people he isn't close to: a short brush-off instead of an answer, now and then
+                    if (key == null && sp.Id == "P08" && !friends && VoiceHas(sp.Id, "brush_off", li.Id) && rng.Chance(0.3)) key = "brush_off";
                 }
                 else if (isOpener)
                 {
                     if (sp.Needs.Fear > 0.5f && VoiceHas(sp.Id, "scared", li.Id) && rng.Chance(0.35)) key = "scared";
                     else if (sp.Needs.Anger > 0.6f && rivals && VoiceHas(sp.Id, "outburst", li.Id) && rng.Chance(0.4)) key = "outburst";
+                    else if ((key = TemperKey(sp, li, topic, rng)) != null) { }
                     else switch (topic)
                         {
                             case "tease": if (VoiceHas(sp.Id, "tease", li.Id)) key = "tease"; break;
@@ -82,7 +90,7 @@ namespace BL23.Sim
                             case "flirt": key = romance ? (VoiceHas(sp.Id, "flirt", li.Id) && rng.Chance(0.5) ? "flirt" : "love_hint") : "small_talk"; break;
                             case "small": case "like":
                                 if (friends && VoiceHas(sp.Id, "joke", li.Id) && rng.Chance(0.25)) key = "joke";
-                                else if (friends && r.Casual && !NoRomance(sp.Id) && !NoRomance(li.Id) && VoiceHas(sp.Id, "dirty_joke", li.Id) && rng.Chance(0.08)) key = "dirty_joke";
+                                else if (friends && r.Casual && !NoRomance(sp.Id) && !NoDirtyTarget(li.Id) && VoiceHas(sp.Id, "dirty_joke", li.Id) && rng.Chance(0.08)) key = "dirty_joke";
                                 else if (friends && VoiceHas(sp.Id, "tease", li.Id) && rng.Chance(0.12)) key = "tease";
                                 else if (rivals && VoiceHas(sp.Id, "insult", li.Id) && rng.Chance(0.1)) key = "insult";
                                 break;
@@ -107,10 +115,29 @@ namespace BL23.Sim
             catch (Exception e) { Fault("life:banter", e); return false; }
         }
 
-        /// <summary>Renders a banter line; a mocking line that would touch 세나's hand is re-drawn (another variant) or becomes small talk.</summary>
+        /// <summary>Temperaments the owner gave (Voice_Traits.cs): 시온's mouth runs at anyone — dirty jokes, abuse, teasing, friend or
+        /// not; 진우 needles people and fakes tears. Everyone else talks by their ties (the switch below).</summary>
+        string TemperKey(Actor sp, Actor li, string topic, Rng rng)
+        {
+            if (topic != "small" && topic != "like" && topic != "tease") return null;
+            if (sp.Id == "P07")
+            {
+                if (!NoDirtyTarget(li.Id) && VoiceHas(sp.Id, "dirty_joke", li.Id) && rng.Chance(0.3)) return "dirty_joke";
+                if (VoiceHas(sp.Id, "insult", li.Id) && rng.Chance(0.15)) return "insult";
+                if (VoiceHas(sp.Id, "tease", li.Id) && rng.Chance(0.2)) return "tease";
+            }
+            if (sp.Id == "P02")
+            {
+                if (VoiceHas(sp.Id, "fake_cry", li.Id) && rng.Chance(0.12)) return "fake_cry";
+                if (VoiceHas(sp.Id, "tease", li.Id) && rng.Chance(0.3)) return "tease";
+            }
+            return null;
+        }
+
+        /// <summary>Renders a banter line (the hand filter for 세나 was lifted by the owner; it stays off).</summary>
         string RenderGuarded(string speaker, string listener, string key, Dictionary<string, string> slots)
         {
-            bool guardHand = MockKeys.Contains(key) && (listener == "P13" || (slots != null && slots.TryGetValue("t", out var t) && t == "@P13"));
+            const bool guardHand = false;
             for (int i = 0; i < 4; i++)
             {
                 var text = Render(speaker, listener, key, slots);
