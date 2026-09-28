@@ -97,6 +97,24 @@ namespace BL23.Sim
             DSay(sim, T, who, "re_protest", new Dictionary<string, string> { { "victim", "@" + D.Victim } }, BeatKind.Line, "protest", null, who == D.Target ? Emotion.Neutral : Emotion.Surprised, Anim.Surprised, 0.5f);
         }
 
+        /// <summary>A faction stands by its own (SocialEventsDesign §2): when the room turns on one of theirs, the leader — or the mate
+        /// closest to them — says so, once a 심판 for that person; and the rival faction's leader may answer that this is what
+        /// factions do. Words only: whose reading turns is still each juror's own (Protects, the vote's lean to the leader).</summary>
+        static void FactionStand(Simulation sim, TrialState T, string P)
+        {
+            var S = sim.S; var D = T.Debate; if (P == null || P == Cast.Player || D.Seen.Contains("faction:" + P)) return;
+            var f = Factions.Of(S, P); if (f == null) return;
+            var jur = Jurors(S, T);
+            string mate = f.Leader != P && f.Leader != D.Target && jur.Contains(f.Leader) ? f.Leader
+                        : f.Members.Where(x => x != P && x != D.Target && jur.Contains(x)).OrderByDescending(x => Factions.Affinity(S, x, P)).ThenBy(x => x, StringComparer.Ordinal).FirstOrDefault();
+            if (mate == null) return;
+            D.Seen.Add("faction:" + P);
+            DSay(sim, T, mate, "re_faction_stand", new Dictionary<string, string> { { "target", "@" + P } }, BeatKind.Line, "faction_stand", null, Emotion.Angry, Anim.Point, 0.5f);
+            var rv = f.Rival != null ? S.Factions.FirstOrDefault(o => o.Id == f.Rival) : null;
+            if (rv != null && rv.Leader != D.Target && jur.Contains(rv.Leader) && DH(S, "facjab:" + D.Incident + ":" + P) < 0.7)
+                DSay(sim, T, rv.Leader, "re_faction_jab", new Dictionary<string, string> { { "target", "@" + mate } }, BeatKind.Line, "faction_jab", null, Emotion.Smirk, Anim.CrossArms, 0.4f);
+        }
+
         /// <summary>At most one tangent per 심판 (1막): a dramatic resident's wild guess, laughed down. Never a decision.</summary>
         static void Tangent(Simulation sim, TrialState T, Mystery m)
         {

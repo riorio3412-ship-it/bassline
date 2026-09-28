@@ -108,7 +108,13 @@ namespace BL23.Sim
             if (it != null && bleeds && (type == DamageType.Cut || type == DamageType.Stab || sev >= 3)) { it.Bloody = true; if (!it.Surface.Contains("blood")) it.Surface.Add("blood"); S.Emit(GameEventType.ItemState, attacker, data: it.Id, text: "blood"); }
             var att = S.A(attacker);
             if (!postmortem) Gore.OnStrike(this, att, v, w, cause, it);   // blood marks only: no ids, no ledger, no shared rng
-            if (att != null && !postmortem && bleeds && att.Pos.f == v.Pos.f && att.Pos.DistXZ(v.Pos) < 2.5f && (type == DamageType.Cut || type == DamageType.Stab || sev >= 3)) att.BloodOnClothes = MathX.Clamp01(att.BloodOnClothes + (region == BodyRegion.Neck ? 0.5f : 0.22f));
+            if (att != null && !postmortem && bleeds && att.Pos.f == v.Pos.f && att.Pos.DistXZ(v.Pos) < 2.5f && (type == DamageType.Cut || type == DamageType.Stab || sev >= 3))
+            {
+                att.BloodOnClothes = MathX.Clamp01(att.BloodOnClothes + (region == BodyRegion.Neck ? 0.5f : 0.22f));
+                // a mask of the house's evening hides a face, not what lands on it (HouseEvents: the house knows whose mask it was)
+                var mask = att.Disguise != null ? S.I(att.Disguise) : null;
+                if (mask != null && mask.Type == "TheaterMask" && !mask.Surface.Contains("blood-speck")) mask.Surface.Add("blood-speck");
+            }
             S.Emit(GameEventType.Wound, attacker, v.Id, text: WoundText.Describe(w), pos: v.Pos, value: sev,
                 data: string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0}|{1}|{2}|{3}|{4:R},{5:R},{6:R}|{7:R},{8:R},{9:R}|{10:R}|{11:R}|{12:R},{13:R},{14:R}|{15}",
                     region, type, sev, postmortem ? 1 : 0, lx, ly, lz, w.dx, w.dy, w.dz, w.ContactImpulse, w.ContactEnergy, w.nx, w.ny, w.nz, resolvedByPhysics ? 1 : 0));

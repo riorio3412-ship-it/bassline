@@ -39,8 +39,8 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
 
 **어디까지 했나 (2026-09-28 기준)**
 - §6의 1~3단계(파벌, 저택 행사, 주민 모임 장면)는 끝났다.
-- 4단계(심판 연결)는 보물찾기 쪽이 끝났다: 구역 알리바이, 구역표 은판, 구역 밖 목격 은판.
-  남은 것: 가면의 밤 목격 익명화와 가면 오인 은판, 파벌 항의.
+- 4단계(심판 연결)도 끝났다: 보물찾기 구역 알리바이·은판, 가면의 밤 은판, 파벌 항의.
+  다음은 5단계(새 방 종류와 배경 카드)다.
 - 첫 살인 다양화(저택의 편지)와 결정성 버그 수정도 했다. 측정 도구는 `firsts`, `staticcheck` 모드다.
 - 자세한 진행은 `CloudWorkLog.md` "기록"의 마지막 줄들을 본다.
 
@@ -124,6 +124,7 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
     'Assets/BASSLINE/BL23/Sim/State/GameState.cs',
     'Assets/BASSLINE/BL23/Sim/State/State.cs',
     'Assets/BASSLINE/BL23/Sim/Systems/Cases.cs',
+    'Assets/BASSLINE/BL23/Sim/Systems/Combat.cs',
     'Assets/BASSLINE/BL23/Sim/Systems/FurnitureChanges.cs',
     'Assets/BASSLINE/BL23/Sim/Systems/FurnitureChanges.cs.meta',
     'Assets/BASSLINE/BL23/Sim/Systems/Gore.cs',
@@ -168,6 +169,7 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
     'Documentation/BL23/SocialEventsDesign.md',
     'ImplementationStatus.md',
     'Tests/BL23/SimTests/DebateDump.cs',
+    'Tests/BL23/SimTests/EventCase.cs',
     'Tests/BL23/SimTests/Extra.cs',
     'Tests/BL23/SimTests/FirstsScan.cs',
     'Tests/BL23/SimTests/FurnitureKnowledgeTest.cs',

@@ -157,7 +157,7 @@ namespace BL23.Sim
                 st.ClaimText = sc.Has("hosted") ? K($"{T(sc.MomentAt)}부터 {S.RoomName(st.ClaimRoom)}에서 {sc.EventLabel}을(를) 열고 있었어요. 손님들이 다 봤어요.")
                              : K($"{T(sc.MomentAt)}쯤부터 {S.RoomName(st.ClaimRoom)}에 사람들과 같이 있었어요.");
             }
-            else if (sc != null && (sc.Alibi == "witness" || sc.Alibi == "clock") && sc.AlibiRoom >= 0)
+            else if (sc != null && (sc.Alibi == "witness" || sc.Alibi == "clock") && sc.AlibiRoom >= 0 && MetWitness(S, sc, me))
             {
                 st.ClaimRoom = sc.AlibiRoom; st.ClaimFrom = sc.Alibi == "clock" ? sc.AlibiAt + sc.ClockShift : sc.AlibiAt - 15; st.ClaimTo = sc.AlibiAt + 30;
                 st.ClaimText = K($"{T(st.ClaimFrom)}부터 {S.RoomName(sc.AlibiRoom)}에서 {N(sc.AlibiWitness)}와(과) 같이 있었어요. {N(sc.AlibiWitness)}한테 물어보세요.");
@@ -204,6 +204,12 @@ namespace BL23.Sim
             else st.Theory = K("누가 했는지는 모르겠어요. 하지만 저는 아니에요.");
             st.Account = K(st.ClaimText + " " + (sc != null && sc.Approach == "errand" ? $"{v}이(가) {sc.Pretext}을(를) 가지러 간 뒤로는 못 봤어요. " : "") + (sg != null ? st.Theory : ""));
         }
+
+        /// <summary>Did the arranged meeting happen — did the witness see them in that room around its hour? A witness who never came
+        /// (called away, a hunt, a body found) is not named: the story falls back to the room alone.</summary>
+        static bool MetWitness(GameState S, Scheme sc, string me)
+            => sc.AlibiWitness != null && S.Know.TryGetValue(sc.AlibiWitness, out var kw)
+               && kw.Sightings.Any(s => s.Target == me && s.Room == sc.AlibiRoom && s.IdConf > 0.5f && s.T1 >= sc.AlibiAt - 25 && s.T0 <= sc.AlibiAt + 45);
 
         static string ClaimAt(GameState S, string me, int room, double kt)
             => room >= 0 && S.Layout.Room(room)?.Type == RoomType.Bedroom && S.Layout.Room(room)?.Owner == me ? K($"{T(kt - 25)}쯤엔 제 방에 혼자 있었어요. 증명할 사람은 없지만요.")

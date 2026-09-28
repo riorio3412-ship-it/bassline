@@ -47,7 +47,7 @@ namespace BL23.Sim
             var d = new CaseDeck { Incident = inc.Id, Loop = S.Loop, Chapter = S.Chapter, Frozen = S.Clock, FrozenSeq = S.Seq, Source = C.Pack != null ? "pack,legacy" : "legacy" };
             double u = MurderHash.U01(S, "deck-fakes:" + inc.Id); d.FakeTarget = u < 0.25 ? 4 : u < 0.75 ? 5 : 6;
             var cands = new List<Plate>();
-            FeedBody(C, cands); FeedTraces(C, cands); FeedFurniture(C, cands); FeedItems(C, cands); FeedWitness(C, cands); FeedCulpritSeen(C, cands); FeedHunt(C, cands); FeedAlibi(C, cands); FeedCoincidence(C, cands); FeedHeld(C, cands);
+            FeedBody(C, cands); FeedTraces(C, cands); FeedFurniture(C, cands); FeedItems(C, cands); FeedWitness(C, cands); FeedCulpritSeen(C, cands); FeedHunt(C, cands); FeedMasque(C, cands); FeedAlibi(C, cands); FeedCoincidence(C, cands); FeedHeld(C, cands);
             BuildClaims(C, d, cands);
             LinkPlates(C, d, cands);
             Select(C, d, cands);
@@ -266,6 +266,21 @@ namespace BL23.Sim
                         p.Back = LineBank.FixParticles($"{G(C.Culprit)}은(는) 그때 {G(C.VictimId)}의 잔에 무언가를 탔다."); cands.Add(p);
                     }
                 }
+                // where the weapon turned up (washed, stashed): the culprit seen in that room right after the deed
+                var wit = C.Inc.Weapon != null ? S.I(C.Inc.Weapon) : null;
+                if (wit != null && wit.Room >= 0 && wit.Room != C.KillRoom && wit.Room != C.FoundRoom && !cands.Any(p => p.Root.EndsWith(":after:" + C.Culprit, StringComparison.Ordinal)))
+                {
+                    var s = k.Sightings.Where(x => x.Target == C.Culprit && x.IdConf >= 0.6f && x.Disguise == null && !x.Dead && x.Room == wit.Room && x.T0 >= C.KillClock - 2 && x.T0 <= C.KillClock + 60)
+                                       .OrderBy(x => x.T0).FirstOrDefault();
+                    if (s != null)
+                    {
+                        string kor = ItemCatalog.Get(wit.Type)?.Kor ?? "흉기";
+                        var props = new[] { new Prop { Kind = PropKind.AtPlace, A = C.Culprit, Room = s.Room, T0 = s.T0, T1 = s.T1 } };
+                        var p = NewPlate(C, "talk:" + w + ":after:" + C.Culprit, PlateKind.Witness, PlateRole.Link, true, $"{G(w)}이(가) 본 것", $"{ClockFmt.Anchor(s.T0)}, {S.RoomName(s.Room)}. {G(C.Culprit)} — {G(w)}", s.Room, s.T0, s.T1, props);
+                        p.Witness = w; p.Seen = C.Culprit; p.Title = LineBank.FixParticles(p.Title); p.Face = LineBank.FixParticles(p.Face);
+                        p.Back = LineBank.FixParticles($"범행 직후 {G(C.Culprit)}은(는) {kor}이(가) 나온 {S.RoomName(s.Room)}에 있었다."); cands.Add(p);
+                    }
+                }
                 if (!cands.Any(p => p.Props.Any(x => x.Kind == PropKind.Bloodied && x.A == C.Culprit)))
                 {
                     var s = k.Sightings.Where(x => x.Target == C.Culprit && x.IdConf >= 0.6f && x.Disguise == null && x.Bloody && x.T0 >= C.KillClock - 5 && x.T0 <= C.KillClock + 240)
@@ -296,11 +311,13 @@ namespace BL23.Sim
             if (vz >= 0) shown.Insert(0, C.VictimId);
             string Line(string x) => $"{G(x)} — {S.RoomName(HouseEvents.ZoneOf(S, g, x))}";
             int more = posted.Count - shown.Count;
+            // and who was not on it: nobody sent them anywhere (the chart's other half)
+            var out_ = C.People.Where(x => x != Cast.Player && HouseEvents.ZoneOf(S, g, x) < 0 && x != C.VictimId).OrderBy(x => x, StringComparer.Ordinal).ToList();
             var props = shown.Select(x => new Prop { Kind = PropKind.Invited, A = x, Room = HouseEvents.ZoneOf(S, g, x), T0 = at, T1 = end, Value = "보물찾기 구역표" }).ToList();
             var chart = NewPlate(C, "record:huntchart:" + g.Id, PlateKind.Record, PlateRole.Confirm, true, "보물찾기 구역표",
-                $"{ClockFmt.Vague(at)}부터 {ClockFmt.Vague(end)}까지, 각자 혼자. {string.Join(" · ", shown.Select(Line))}{(more > 0 ? $" 외 {TrialSystem.Kor(more)} 명" : "")}", vz >= 0 ? vz : C.KillRoom, at, end, props);
-            chart.Back = vz >= 0 ? LineBank.FixParticles($"그 시각 {G(C.VictimId)}이(가) {S.RoomName(vz)}에 혼자 있다는 건 구역표를 들은 사람 누구나 알았다. 구역표는 가라는 곳이지, 있었다는 증거는 아니다.")
-                                 : "구역표는 가라는 곳이지, 있었다는 증거는 아니다.";
+                $"{ClockFmt.Vague(at)}부터 {ClockFmt.Vague(end)}까지, 각자 혼자. {string.Join(" · ", shown.Select(Line))}{(more > 0 ? $" 외 {TrialSystem.Kor(more)} 명" : "")}{(out_.Count > 0 ? " · 참가하지 않음: " + string.Join("·", out_.Select(G)) : "")}", vz >= 0 ? vz : C.KillRoom, at, end, props);
+            chart.Back = (vz >= 0 ? LineBank.FixParticles($"그 시각 {G(C.VictimId)}이(가) {S.RoomName(vz)}에 혼자 있다는 건 구역표를 들은 사람 누구나 알았다. ") : "")
+                       + "구역표는 가라는 곳이지, 있었다는 증거는 아니다." + (out_.Count > 0 ? " 구역이 없던 사람은 어디에도 묶여 있지 않았다." : "");
             cands.Add(chart);
             if (cz < 0) return;
             // the culprit off their zone while the claim runs (the scene itself is FeedWitness's)
@@ -315,6 +332,56 @@ namespace BL23.Sim
                     new[] { new Prop { Kind = PropKind.AtPlace, A = C.Culprit, Room = s.Room, T0 = s.T0, T1 = s.T1 } });
                 p.Witness = w; p.Seen = C.Culprit; p.Title = LineBank.FixParticles(p.Title); p.Face = LineBank.FixParticles(p.Face);
                 p.Back = LineBank.FixParticles($"구역표가 {G(C.Culprit)}에게 준 곳은 {S.RoomName(cz)} — 그런데 그 시각 {G(C.Culprit)}은(는) {S.RoomName(s.Room)}에 있었다.");
+                cands.Add(p); return;
+            }
+        }
+
+        // ---- the masquerade (HouseEvents): a mask hides a face — not a height, and not what lands on it. The masks the house handed
+        //      out by name came back at the end, one with a speck of blood (true); a witness who saw a mask near the scene put a
+        //      name to it by its height, and the name was wrong (Mistaken: the one named was still in the hall, and says so)
+        static void FeedMasque(CaseFacts C, List<Plate> cands)
+        {
+            var S = C.S; if (C.Culprit == null || S.Gatherings == null) return;
+            var g = S.Gatherings.FirstOrDefault(x => x.Kind == "house:masque" && !x.Cancelled && x.Revs.Count > 0 && C.KillClock >= x.Cur.Start - 5 && C.KillClock <= x.Cur.Start + (HouseEvents.KindOf(x)?.Len ?? 80) + 5);
+            if (g == null) return;
+            var mask = S.Items.Values.Where(i => i.Type == "TheaterMask" && i.Surface.Contains("blood-speck") && HouseEvents.MaskOf(S, i) == C.Culprit).OrderBy(i => i.Id, StringComparer.Ordinal).FirstOrDefault();
+            if (mask != null)
+            {
+                var props = new[] { new Prop { Kind = PropKind.Bloodied, A = C.Culprit, Room = C.KillRoom, T0 = C.KillClock, T1 = C.KillClock } };
+                var p = NewPlate(C, "record:mask:" + mask.Id, PlateKind.Record, PlateRole.Link, true, "돌려받은 가면",
+                    LineBank.FixParticles($"가면의 밤이 끝나고 돌려받은 가면 하나에 작은 핏자국. 저택의 기록 — {G(C.Culprit)} 님께 드린 가면"), g.Cur.Room, g.Cur.Start, g.Cur.Start + 80, props);
+                p.Back = LineBank.FixParticles($"{G(C.Culprit)}이(가) 쓴 가면에 피가 튀었다 — 가면을 쓴 채로 {G(C.VictimId)}을(를) 찔렀다.");
+                cands.Add(p);
+            }
+            // who stayed in the hall through the kill (never marked leaving it then)
+            bool Stayed(string x) => g.Arrived.ContainsKey(x) && !S.Ledger.Any(e => e.Type == "GatheringLeave" && e.Actor == x && e.Data == g.Id && e.Clock >= C.KillClock - 45 && e.Clock <= C.KillClock + 10);
+            var cul = S.A(C.Culprit); if (cul == null) return;
+            var near = new HashSet<int> { C.KillRoom, C.FoundRoom }; foreach (var nb in S.Layout.Neighbors(C.KillRoom)) near.Add(nb);
+            foreach (var w in C.Npcs.Where(x => x != C.Culprit).OrderBy(x => x, StringComparer.Ordinal))
+            {
+                var s = S.K(w).Sightings.Where(x => x.Target == C.Culprit && x.Disguise == "TheaterMask" && !x.Dead && near.Contains(x.Room) && x.T1 >= C.KillClock - 30 && x.T0 <= C.KillClock + 10)
+                                   .OrderBy(x => Math.Abs(x.T0 - C.KillClock)).FirstOrDefault();
+                if (s == null) continue;
+                // the name the height suggested to them: someone at the masquerade of about the same height whom they know
+                string guess = g.Arrived.Keys.Where(x => x != C.Culprit && x != C.VictimId && x != w && x != Cast.Player && S.A(x)?.Alive == true && C.Npcs.Contains(x) && Stayed(x)
+                                                         && Math.Abs((S.A(x).Def.HeightCm) - cul.Def.HeightCm) <= 6)
+                                             .OrderByDescending(x => S.HasRel(w, x) ? S.R(w, x).Like + S.R(w, x).Trust : 0f).ThenBy(x => x, StringComparer.Ordinal).FirstOrDefault();
+                string hw = HouseEvents.HeightWord(cul);
+                if (guess == null)
+                {
+                    // nobody of that height to mistake them for: the sighting is only a mask and a height (true)
+                    var tp = NewPlate(C, "talk:" + w + ":mask", PlateKind.Witness, PlateRole.Confirm, true, $"{G(w)}이(가) 본 것", $"{ClockFmt.Anchor(s.T0)}, {S.RoomName(s.Room)}. 가면 쓴 사람, {hw} — {G(w)}", s.Room, s.T0, s.T1,
+                        new[] { new Prop { Kind = PropKind.Disguised, A = null, Room = s.Room, T0 = s.T0, T1 = s.T1, Value = hw } });
+                    tp.Witness = w; tp.Title = LineBank.FixParticles(tp.Title); tp.Face = LineBank.FixParticles(tp.Face);
+                    tp.Back = LineBank.FixParticles($"그 무렵 가면을 쓴 누군가가 {S.RoomName(s.Room)}에 있었다 — {hw}."); cands.Add(tp);
+                    return;
+                }
+                var props = new[] { new Prop { Kind = PropKind.AtPlace, A = guess, Room = s.Room, T0 = s.T0, T1 = s.T1 }, new Prop { Kind = PropKind.Culprit, A = guess, B = C.VictimId, Value = "opportunity" } };
+                var p = NewPlate(C, "talk:" + w + ":mask:" + guess, PlateKind.Witness, PlateRole.Mistaken, false, LineBank.FixParticles($"{G(w)}이(가) 본 것"),
+                    $"{ClockFmt.Anchor(s.T0)}, {S.RoomName(s.Room)}. 가면을 썼지만 {hw} — {G(guess)} 같았다 — {G(w)}", s.Room, s.T0, s.T1, props);
+                p.Witness = w; p.Seen = guess; p.Points = guess; p.Owner = guess; p.Origin = "가면"; p.Routes.Add("ask:" + guess); p.Users.Add("theory:" + w);
+                p.Face = LineBank.FixParticles(p.Face);
+                p.Back = LineBank.FixParticles($"키가 비슷했을 뿐 — {G(guess)}은(는) 그때 가면을 쓴 채 {S.RoomName(g.Cur.Room)}에 있었다.");
                 cands.Add(p); return;
             }
         }

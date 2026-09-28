@@ -487,9 +487,11 @@ namespace BL23.Sim
                 if (g.Arrived.ContainsKey(x.Id) && !g.Left.ContainsKey(x.Id) && x.Room != R.Room && S.Clock < R.End - 5 && S.Clock > g.Arrived[x.Id] + 1)
                 {
                     g.Left[x.Id] = S.Clock; S.Log("GatheringLeave", x.Id, g.Host, room: R.Room, data: g.Id);
-                    foreach (var w in S.Living.Where(o => o != x && o.Room == R.Room && o.Pose != Pose.Sleep)) S.K(w.Id).Facts.Add($"left-gathering:{x.Id}:{g.Id}:{(int)S.Clock}");
+                    // at the masquerade the watchers saw a mask go, and how tall it stood — not who
+                    string who = HouseEvents.Masked(S, x) ? "masked-" + (x.Def.HeightCm >= 178 ? "tall" : x.Def.HeightCm < 165 ? "short" : "mid") : x.Id;
+                    foreach (var w in S.Living.Where(o => o != x && o.Room == R.Room && o.Pose != Pose.Sleep)) S.K(w.Id).Facts.Add($"left-gathering:{who}:{g.Id}:{(int)S.Clock}");
                 }
-                else if (g.Left.ContainsKey(x.Id) && x.Room == R.Room && S.Clock <= R.End) { S.Log("GatheringReturn", x.Id, g.Host, room: R.Room, data: $"{g.Id} away {(int)(S.Clock - g.Left[x.Id])}min"); foreach (var w in S.Living.Where(o => o != x && o.Room == R.Room && o.Pose != Pose.Sleep)) S.K(w.Id).Facts.Add($"back-gathering:{x.Id}:{g.Id}:{(int)S.Clock}"); g.Left.Remove(x.Id); }
+                else if (g.Left.ContainsKey(x.Id) && x.Room == R.Room && S.Clock <= R.End) { S.Log("GatheringReturn", x.Id, g.Host, room: R.Room, data: $"{g.Id} away {(int)(S.Clock - g.Left[x.Id])}min"); string who = HouseEvents.Masked(S, x) ? "masked-" + (x.Def.HeightCm >= 178 ? "tall" : x.Def.HeightCm < 165 ? "short" : "mid") : x.Id; foreach (var w in S.Living.Where(o => o != x && o.Room == R.Room && o.Pose != Pose.Sleep)) S.K(w.Id).Facts.Add($"back-gathering:{who}:{g.Id}:{(int)S.Clock}"); g.Left.Remove(x.Id); }
                 // stood up: waited at the old place, nobody came
                 if (g.Arrived.ContainsKey(x.Id) && kr != g.Rev && S.Clock > g.Arrived[x.Id] + 15 && g.Status[x.Id] != "stoodup" && x.Room == R.Room && !S.Living.Any(o => o != x && o.Room == R.Room && g.Status.ContainsKey(o.Id)))
                 {

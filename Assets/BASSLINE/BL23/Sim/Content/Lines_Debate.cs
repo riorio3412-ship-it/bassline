@@ -100,6 +100,11 @@ namespace BL23.Sim
             ["re_pileon"] = (new[] { "저도 그게 이상했어요.", "맞아요. 제가 봐도 그래요." }, new[] { "나도 그게 이상했어.", "맞아. 내가 봐도 그래." }),
             ["re_protest"] = (new[] { "말도 안 돼요! 제가 왜 {victim}을(를)…", "지금 저를 의심하는 거예요? 기가 막혀서…", "아니라고요! 몇 번을 말해요!" },
                               new[] { "말도 안 돼! 내가 왜 {victim}을(를)…", "지금 나 의심하는 거야? 어이가 없네.", "아니라고! 몇 번을 말해!" }),
+            // a faction stands by its own (SocialEventsDesign §2) — and the rival faction says that is what factions do
+            ["re_faction_stand"] = (new[] { "{target}은(는) 그럴 사람이 아니에요. 제가 옆에서 봐서 알아요.", "잠깐만요. {target}을(를) 그렇게 몰면 저도 가만히 못 있어요.", "같은 편이라서 하는 말이 아니에요. {target}은(는) 아니에요." },
+                                    new[] { "{target}은(는) 그럴 사람 아니야. 내가 옆에서 봐서 알아.", "야, {target}을(를) 그렇게 몰면 나도 가만 안 있어.", "같은 편이라서 하는 말 아니야. {target}은(는) 아니야." }),
+            ["re_faction_jab"] = (new[] { "또 자기들끼리 감싸네요. 늘 그래 왔잖아요.", "{target}은(는) 자기 편이면 무조건 감싸잖아요." },
+                                  new[] { "또 자기들끼리 감싸네. 늘 그랬지.", "{target}은(는) 자기 편이면 무조건 감싸잖아." }),
             ["re_fear"] = (new[] { "그럼… 범인이 아직 이 안에 있다는 거잖아요.", "그런 사람이 여기 서 있다고요? 저 옆에?" },
                            new[] { "그럼… 범인이 아직 여기 있다는 거잖아.", "그런 인간이 여기 서 있다고? 내 옆에?" }),
             ["re_scoff"] = (new[] { "그걸 지금 증거라고 내놓는 거예요?", "하, 그 정도로 사람을 몰아요?", "…그 은판이 그 얘기랑 무슨 상관이에요?", "민혁 씨, 다시 보세요. 그건 아니에요.", "그건 아무것도 증명 못 해요." },
@@ -295,6 +300,8 @@ namespace BL23.Sim
             ["P07|res_holder_concede"] = new[] { "…아 씨, 내가 틀렸네. 인정. 쪽팔리게." },
             ["P07|res_holder_stubborn"] = new[] { "그래도 수상한 건 수상한 거야! 내 감은 안 틀려!" },
             ["P07|res_accused_relief"] = new[] { "봤냐? 봤냐고! 나 아니라니까! 크하하!" },
+            ["P07|re_faction_stand"] = new[] { "야, 씨발, {target} 건드리지 마. 걔 그럴 깜냥도 없어." },
+            ["P07|re_faction_jab"] = new[] { "크하하, 또 끼리끼리 감싸기냐? 레알 뻔하다." },
             ["P07|re_framed"] = new[] { "누가 내 이름 써 놨어? 나와. 지금 당장 나와, 씨발!" },
             ["P07|vote_line"] = new[] { "{target}. 틀리면 내가 욕먹을게. 크하하." },
             // 진우 — the innocent smile that bites; fake tears

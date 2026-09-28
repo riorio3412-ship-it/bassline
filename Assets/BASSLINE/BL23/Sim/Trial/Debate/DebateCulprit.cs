@@ -45,6 +45,7 @@ namespace BL23.Sim
             string echo = pusher == D.Target ? honest : (jur.Contains(D.Target ?? "") ? D.Target : null);
             if (echo != null) Back(sim, T, th, echo, "push_echo", null, Emotion.Neutral, Anim.CrossArms);
             Protest(sim, T, P);
+            FactionStand(sim, T, P);
             int n = 0;
             foreach (var j in jur.Where(j => j != P && j != pusher && j != D.Target && !Protects(S, j, P) && D.Reading[j] != P).OrderBy(j => DH(S, "turn:" + j)))
             {
@@ -232,6 +233,8 @@ namespace BL23.Sim
                     if (p.Kind == PropKind.Held && ItemCatalog.Get(p.Item)?.IsWeapon == true) return LineBank.FixParticles($"{Given(X)}의 손에 {ItemCatalog.Get(p.Item)?.Kor}이(가) 있었다");
                     if (p.Kind == PropKind.Bloodied) return LineBank.FixParticles($"{Given(X)}의 옷에 피가 묻어 있었다");
                 }
+                // any other witnessed tie the deck made for fair play (off their hunt zone, where the weapon turned up)
+                if (P.True && P.Role == PlateRole.Link && P.Seen == X && P.Back != null) return P.Back;
                 return null;
             }
             switch (c.Kind)

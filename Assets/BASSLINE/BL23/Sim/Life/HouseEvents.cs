@@ -114,6 +114,18 @@ namespace BL23.Sim
             }
             return yes;
         }
+        /// <summary>Is this resident wearing the mask the house handed out for its masquerade?</summary>
+        public static bool Masked(GameState S, Actor x) => x?.Disguise != null && S.Flags.ContainsKey($"hevmaskof:{x.Id}") && S.I(x.Disguise)?.Type == "TheaterMask";
+        /// <summary>What a mask cannot hide: how tall they stand ("큰 편" · "보통" · "작은 편").</summary>
+        public static string HeightWord(Actor x) { int h = x?.Def?.HeightCm ?? 170; return h >= 178 ? "키가 큰 편" : h < 165 ? "키가 작은 편" : "보통 키"; }
+        /// <summary>The person the house gave this mask to, or null.</summary>
+        public static string MaskOf(GameState S, Item mask)
+        {
+            if (mask == null) return null; string pre = $"hevmaskgiven:{mask.Id}:";
+            var k = S.Flags.Keys.Where(f => f.StartsWith(pre, StringComparison.Ordinal)).OrderBy(f => f, StringComparer.Ordinal).FirstOrDefault();
+            return k?.Substring(pre.Length);
+        }
+
         /// <summary>Why this resident said no to that evening ("fear", "enemy", "lead", "crowd", "rest"), or null.</summary>
         public static string NoReason(GameState S, string who, string gid)
         {
@@ -290,7 +302,7 @@ namespace BL23.Sim
                     foreach (var x in S.LivingNpcs.Where(x => g.Status.TryGetValue(x.Id, out var st) && (st == "accepted" || st == "attended" || st == "late") && x.Disguise == null).OrderBy(x => x.Id, StringComparer.Ordinal))
                     {
                         var m = new Item { Id = S.NewId("it"), Type = "TheaterMask", Name = "가면의 밤 가면", Owner = Cast.Butler, Holder = x.Id, Pos = x.Pos, Room = x.Room, HomeRoom = room.Id };
-                        S.Items[m.Id] = m; x.Disguise = m.Id; S.Flags[$"hevmaskof:{x.Id}"] = 1;
+                        S.Items[m.Id] = m; x.Disguise = m.Id; S.Flags[$"hevmaskof:{x.Id}"] = 1; S.Flags[$"hevmaskgiven:{m.Id}:{x.Id}"] = S.Clock;   // the house hands them out by name
                         S.Emit(GameEventType.Disguise, x.Id, data: m.Type);
                     }
                     S.Log("HouseMasks", Cast.Butler, room: room.Id, data: g.Id);

@@ -39,8 +39,9 @@ public static partial class Program
     {
         var S = sim.S; var sb = new StringBuilder();
         sb.AppendLine($"case {d.Incident} L{d.Loop}C{d.Chapter}: victim {Cast.GivenOf(C.VictimId)} culprit {Cast.GivenOf(C.Culprit)} trick {C.Trick ?? "-"} kill {S.RoomName(C.KillRoom)} {ClockFmt.HM(C.KillClock)} found {S.RoomName(C.FoundRoom)} {ClockFmt.HM(C.FoundClock)} scapegoat {Cast.GivenOf(C.Scapegoat) ?? "-"} pack {(C.Pack == null ? "none" : C.Pack.Improvised ? "improvised" : "scheme")}");
+        sb.AppendLine("factions: " + Factions.Describe(S));
         foreach (var g in S.Gatherings.Where(g => HouseEvents.IsHouse(g) && g.Revs.Count > 0)) sb.AppendLine($"house event: {g.Kind} {g.Label} {ClockFmt.DayHM(g.Cur.Start)} @{S.RoomName(g.Cur.Room)}{(g.Cancelled ? " (cancelled)" : "")}");
-        if (C.Pack != null) sb.AppendLine($"scheme: moment {C.Pack.Truth.Moment ?? "-"} ({C.Pack.Truth.MomentText}) approach {C.Pack.Truth.Approach ?? "-"} · story “{C.Pack.Story.ClaimText}” [{S.RoomName(C.Pack.Story.ClaimRoom)} {ClockFmt.HM(C.Pack.Story.ClaimFrom)}–{ClockFmt.HM(C.Pack.Story.ClaimTo)}] · lies {string.Join(",", C.Pack.Lies.Select(l => l.Topic + "/" + l.BrokenBy.Count))}");
+        if (C.Pack != null) sb.AppendLine($"scheme: moment {C.Pack.Truth.Moment ?? "-"} ({C.Pack.Truth.MomentText}) approach {C.Pack.Truth.Approach ?? "-"} · story “{C.Pack.Story.ClaimText}” [{S.RoomName(C.Pack.Story.ClaimRoom)} {ClockFmt.HM(C.Pack.Story.ClaimFrom)}–{ClockFmt.HM(C.Pack.Story.ClaimTo)}] · lies {string.Join(", ", C.Pack.Lies.Select(l => l.Topic + "[" + string.Join(" ", l.BrokenBy.Take(4)) + (l.BrokenBy.Count > 4 ? " …" : "") + "]"))}");
         sb.AppendLine($"deck: {d.Plates.Count} plates, true {d.TrueCount}, fake {d.FakeCount} (target {d.FakeTarget}) source {d.Source}");
         foreach (var c in d.Claims) sb.AppendLine($"  claim {c.Id} L{c.Layer} {c.Axis} {(c.Truth == "true" ? "(true)" : "")} “{c.Text}”");
         foreach (var m in d.Mysteries) sb.AppendLine($"  riddle {m.Id} [{m.Kind}] {m.Text} ← {m.Claim}");
