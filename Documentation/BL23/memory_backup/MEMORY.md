@@ -1,0 +1,12 @@
+- [Danganronpa as quality bar, not copy](no-danganronpa-copy-gothic-style.md) — DR-level tricks/presentation/daily life/characters as heavy structural reference; no recognizable copying; gothic court; 심판 not 학급재판
+- [Fun, richness, polish first](priority-fun-richness-polish.md) — BL23 docs are references only; judge by player experience
+- [Commercial quality, vertical slice](commercial-quality-vertical-slice.md) — user wants market-level daily/investigation/trial/characters/music; Yusti makes all announcements and runs trial procedure+verdict
+- [Handoff pointer](handoff-pointer.md) — resume BL23 from Documentation/BL23/HANDOFF.md (§0.5 owner goal verbatim, §3.00 stop point); paste NEW_SESSION_PROMPT.md
+- [First person, motions, fewer clues](first-person-motions-clues.md) — FP exploration (protagonist only in dialogue/trial), every action animated, only case-relevant testimony is evidence
+- [Readability & crowd directives](readability-and-crowd-directives.md) — plain times, per-person board, few clues, NPC intent, no identical crowd poses, rich rooms, deeper murder sim
+- [Horror presentation directives](horror-presentation-directives.md) — discovery film w/ gore+struggle+severed close-ups, original score, 김진우 dark face, install user models fast
+- [Trial = hypothesis debate, lying culprit](trial-as-hypothesis-debate.md) — audacious group-moment murders; residents' competing theories; culprit lies desperately; NOT clue-vs-clue objections
+- [Test after a system is complete](test-after-system-complete.md) — don't test often; one in-game error check per finished system
+- [Owner core goal (physics, killers, debate feel)](owner-goal-physics-initiative-debate.md) — AAA physical reactions/kills, proactive killers, 심판 must FEEL like real debate not a system
+- [Owner models: face approach B](owner-models-face-approach-b.md) — keep owner's face; Blender real eyes/lids/mouth + shape keys; owner will resend Tripo models; side-by-side approval first
+- [Owner's game vision](owner-game-vision.md) — replayable gothic closed-circle life+murder sim, DR-level feel, emergent proactive killers, AAA physicality, real-debate 심판; + juice & finer furniture (09-28)

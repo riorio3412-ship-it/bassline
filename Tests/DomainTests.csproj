@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems><LangVersion>9.0</LangVersion><Nullable>disable</Nullable></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Assets/BASSLINE/Scripts/Core/**/*.cs" />
+    <Compile Include="../Assets/BASSLINE/Scripts/World/**/*.cs" />
+    <Compile Include="../Assets/BASSLINE/Scripts/Save/**/*.cs" />
+    <Compile Include="../Assets/BASSLINE/Scripts/Editor/Importers/CsvTable.cs" />
+    <Compile Include="../Assets/BASSLINE/Scripts/Editor/Validators/PackageValidator.cs" />
+    <Compile Include="../Assets/BASSLINE/Scripts/Knowledge/**/*.cs" />
+    <Compile Include="../Assets/BASSLINE/Scripts/NPC/**/*.cs" />
+    <Compile Include="../Assets/BASSLINE/Scripts/Investigation/**/*.cs" />
+    <Compile Include="../Assets/BASSLINE/Scripts/Trial/**/*.cs" />
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+</Project>
+

@@ -1,0 +1,14 @@
+{
+    "autoReferenced":  false,
+    "references":  [
+                       "BASSLINE.Core",
+                       "BASSLINE.World",
+                       "BASSLINE.Knowledge",
+                       "BASSLINE.Investigation",
+                       "BASSLINE.NPC",
+                       "BASSLINE.Trial"
+                   ],
+    "noEngineReferences":  true,
+    "name":  "BASSLINE.Save",
+    "rootNamespace":  "BASSLINE"
+}

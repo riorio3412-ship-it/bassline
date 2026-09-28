@@ -1,0 +1,25 @@
+{
+  "name": "BASSLINE.Tests.EditMode",
+  "references": [
+    "BASSLINE.Core",
+    "BASSLINE.World",
+    "BASSLINE.Save",
+    "BASSLINE.Bootstrap",
+    "BASSLINE.Editor",
+    "BASSLINE.AuthoringData",
+    "BASSLINE.Presentation.Break",
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.RenderPipelines.Core.Runtime",
+    "BASSLINE.Knowledge",
+    "BASSLINE.Investigation",
+    "BASSLINE.NPC",
+    "BASSLINE.Trial",
+    "BASSLINE.UI"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

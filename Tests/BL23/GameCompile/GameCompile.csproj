@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Nullable>disable</Nullable>
+    <NoWarn>CS0649;CS0169;CS0414;CS0067;CS0618;CS8981</NoWarn>
+    <UnityManaged>C:/Program Files/Unity/Hub/Editor/6000.6.0f1/Editor/Data/Managed</UnityManaged>
+    <ScriptAsm>../../../Library/ScriptAssemblies</ScriptAsm>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../Assets/BASSLINE/BL23/Sim/**/*.cs" />
+    <Compile Include="../../../Assets/BASSLINE/BL23/Game/**/*.cs" />
+    <Compile Include="Stubs/Characters.cs" Condition="!Exists('../../../Assets/BASSLINE/BL23/Game/Characters') And !Exists('../../../Assets/BASSLINE/BL23/Game/_Stubs/CharactersStub.cs')" />
+    <Compile Include="Stubs/Mansion.cs" Condition="!Exists('../../../Assets/BASSLINE/BL23/Game/Mansion') And !Exists('../../../Assets/BASSLINE/BL23/Game/_Stubs/MansionStub.cs')" />
+    <Reference Include="$(UnityManaged)/UnityEngine/*.dll" Private="false" />
+    <Reference Include="$(ScriptAsm)/UnityEngine.UI.dll" Private="false" />
+    <Reference Include="$(ScriptAsm)/Unity.TextMeshPro.dll" Private="false" />
+    <Reference Include="$(ScriptAsm)/Unity.RenderPipelines.Universal.Runtime.dll" Private="false" />
+    <Reference Include="$(ScriptAsm)/Unity.RenderPipelines.Core.Runtime.dll" Private="false" />
+    <Reference Include="../../../Library/PackageCache/com.unity.nuget.newtonsoft-json@4dfd81071c64/Runtime/Newtonsoft.Json.dll" Private="false" />
+  </ItemGroup>
+</Project>

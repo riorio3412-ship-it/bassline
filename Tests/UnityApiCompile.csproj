@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems><LangVersion>9.0</LangVersion><Nullable>disable</Nullable><UnityEditorPath Condition="'$(UnityEditorPath)' == ''">C:/Program Files/Unity/Hub/Editor/6000.6.0f1/Editor</UnityEditorPath></PropertyGroup>
+  <ItemGroup><Compile Include="../Assets/BASSLINE/Scripts/**/*.cs"/><Reference Include="$(UnityEditorPath)/Data/Managed/UnityEngine/*.dll"/><Reference Include="$(UnityEditorPath)/Data/Managed/UnityEditor/*.dll"/></ItemGroup>
+</Project>

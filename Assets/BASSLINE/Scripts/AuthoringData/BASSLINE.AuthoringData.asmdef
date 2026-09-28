@@ -1,0 +1,10 @@
+{
+  "autoReferenced": false,
+  "references": [
+    "BASSLINE.Core",
+    "Unity.TextMeshPro"
+  ],
+  "noEngineReferences": false,
+  "name": "BASSLINE.AuthoringData",
+  "rootNamespace": "BASSLINE"
+}

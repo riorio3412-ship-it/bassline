@@ -1,0 +1,9 @@
+{
+  "autoReferenced": false,
+  "references": [
+    "BASSLINE.Core"
+  ],
+  "noEngineReferences": true,
+  "name": "BASSLINE.World",
+  "rootNamespace": "BASSLINE"
+}

@@ -1,0 +1,22 @@
+{
+  "name": "BL23.Editor",
+  "rootNamespace": "BL23.EditorTools",
+  "references": [
+    "BL23.Sim",
+    "BL23.Game",
+    "Unity.TextMeshPro",
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.RenderPipelines.Core.Runtime",
+    "glTFast",
+    "glTFast.Editor"
+  ],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll"],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

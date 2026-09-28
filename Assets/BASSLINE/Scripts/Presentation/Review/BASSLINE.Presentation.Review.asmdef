@@ -1,0 +1,8 @@
+{
+  "name": "BASSLINE.Presentation.Review",
+  "references": [
+    "BASSLINE.Core",
+    "BASSLINE.UI"
+  ],
+  "autoReferenced": false
+}

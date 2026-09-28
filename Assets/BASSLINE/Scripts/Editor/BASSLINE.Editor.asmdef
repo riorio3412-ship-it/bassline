@@ -1,0 +1,26 @@
+{
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": false,
+  "references": [
+    "BASSLINE.Core",
+    "BASSLINE.World",
+    "BASSLINE.Save",
+    "BASSLINE.AuthoringData",
+    "BASSLINE.Bootstrap",
+    "BASSLINE.Presentation.Review",
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.RenderPipelines.Core.Runtime",
+    "Unity.RenderPipelines.Core.Editor",
+    "BASSLINE.UI",
+    "Unity.TextMeshPro",
+    "Unity.ugui",
+    "BASSLINE.Knowledge",
+    "BASSLINE.Investigation",
+    "BASSLINE.NPC"
+  ],
+  "name": "BASSLINE.Editor",
+  "noEngineReferences": false,
+  "rootNamespace": "BASSLINE"
+}

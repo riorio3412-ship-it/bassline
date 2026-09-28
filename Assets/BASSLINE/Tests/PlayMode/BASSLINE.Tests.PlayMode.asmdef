@@ -1,0 +1,21 @@
+{
+  "name": "BASSLINE.Tests.PlayMode",
+  "references": [
+    "BASSLINE.Core",
+    "BASSLINE.World",
+    "BASSLINE.Save",
+    "BASSLINE.Bootstrap",
+    "BASSLINE.AuthoringData",
+    "BASSLINE.Presentation.Review",
+    "BASSLINE.UI",
+    "Unity.TextMeshPro",
+    "Unity.ugui",
+    "BASSLINE.Knowledge",
+    "BASSLINE.Investigation",
+    "BASSLINE.NPC",
+    "BASSLINE.Trial"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

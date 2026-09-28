@@ -1,0 +1,294 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+
+namespace BL23.Sim
+{
+    /// <summary>
+    /// F5 — the Morning and Evening Table (DailyLifeDesign §3.2). Each shared meal has ONE topic drawn from the world
+    /// (a death, a verdict, a new rule, the house's hunger, the buddy proposal, yesterday's quarrel, today's event, an empty
+    /// chair, a rumour, someone's habit, the food). Its owner opens (tt_&lt;kind&gt;), 2–4 diners react to the opener by name
+    /// (tt_&lt;kind&gt;_re, with @opener pair variants from the voice packs), and 민혁 — when he is at the table — may say one thing
+    /// (side with, defuse, stay silent). Without him the table talks anyway at meal + 25 minutes: the lines are overheard and
+    /// the table's effects happen (who heard whose habit — DailyLife §7.4 — is exactly the knowledge a poisoner needs).
+    /// Presentation: CinematicUI.TableTalk → LifeSceneUI.TableTalk → LifeTable.
+    /// </summary>
+    public sealed partial class Simulation
+    {
+        static readonly string[] TopicOrder = { "death", "verdict", "rule", "hunger", "buddy", "conflict", "event", "absent", "rumour", "habit", "food" };
+
+        /// <summary>Presentation: 민혁 is at the table with these diners. The staged table scene, or null (already talked this meal).</summary>
+        public LifeStage LifeTable(List<string> diners, string meal)
+        {
+            if (S.Phase != Phase.Daily || diners == null || (_stage != null && !_stage.Over)) return null;
+            if (meal != "breakfast" && meal != "dinner" && meal != "lunch") return null;
+            if (S.Flags.ContainsKey($"ltt:{S.Day}:{meal}")) return null;
+            try
+            {
+                var run = TableBuild(diners.Where(d => S.A(d)?.Alive == true).Distinct().ToList(), meal, true);
+                if (run == null) return null;
+                _stage = run;
+                var lines = RunFrom(run);
+                if (run.Over) _stage = null;
+                return ToStage(run, lines);
+            }
+            catch (Exception e) { Fault("life:table", e); _stage = null; return null; }
+        }
+
+        void TableTick(int mod)
+        {
+            for (int slot = 0; slot < 3; slot += 2)
+            {
+                if (mod != MealStart[slot] + 25) continue;
+                string meal = slot == 0 ? "breakfast" : "dinner";
+                if (S.Flags.ContainsKey($"ltt:{S.Day}:{meal}")) continue;
+                var din = S.Layout.First(RoomType.Dining); if (din == null) continue;
+                if (LifePlayerAround() && S.Player.Room == din.Id) continue;   // 민혁 is there: the presentation stages it
+                var diners = S.LivingNpcs.Where(x => x.Room == din.Id && x.Status == ActorStatus.Active && x.Pose != Pose.Sleep && x.PlanId == null).OrderBy(x => x.Id, StringComparer.Ordinal).Select(x => x.Id).ToList();
+                if (diners.Count < 3) continue;
+                var run = TableBuild(diners.Take(7).ToList(), meal, false); if (run == null) continue;
+                var lines = RunFrom(run);
+                LifeSayLater(lines, 0.3, 1.0);
+                TableNpcOnly(run);
+            }
+        }
+
+        // ------------------------------------------------------------------ choosing the topic
+        (string kind, string subject, string owner) PickTopic(List<string> diners, string meal)
+        {
+            string Has(string id) => diners.Contains(id) ? id : null;
+            string By(Func<string, double> score) => diners.OrderByDescending(score).ThenBy(x => x, StringComparer.Ordinal).FirstOrDefault();
+            var found = new List<(string kind, string subject, string owner)>();
+            // 1 death: the first shared meal after a confirmed death
+            var dead = S.Incidents.Values.Where(i => i.Loop == S.Loop && i.Confirmed && !S.Flags.ContainsKey("ltdeath:" + i.Victim)).OrderBy(i => i.ConfirmClock).FirstOrDefault();
+            if (dead != null) found.Add(("death", dead.Victim, By(d => S.R(d, dead.Victim).Attach + S.R(d, dead.Victim).Like)));
+            // 2 verdict: the first meal after a 심판
+            var set = S.Settlements.Where(s => s.Loop == S.Loop && s.Applied && !S.Flags.ContainsKey("ltver:" + s.Id)).LastOrDefault();
+            if (set != null) found.Add(("verdict", set.Executed ?? set.Accused, By(d => set.Votes.TryGetValue(d, out var v) && v == set.Executed ? 1 : 0)));
+            // 3 rule: a rule announced within half a day
+            var an = S.Announcements.Where(a => a.Rule != null && S.Clock - a.Clock < 12 * 60 && !S.Flags.ContainsKey("ltrule:" + a.Rule)).OrderByDescending(a => a.Clock).FirstOrDefault();
+            if (an != null) { var ri = S.Ch.Rules.FirstOrDefault(r => r.Id == an.Rule || r.Rule == an.Rule); string owner = ri?.Targets.FirstOrDefault(t => diners.Contains(t)) ?? By(d => S.A(d).Needs.Stress); found.Add((ri != null && ri.Rule == "CH06" ? "envelope" : "rule", an.Rule, owner)); }
+            // 4 hunger
+            if (S.Flags.TryGetValue($"hunger:{S.Loop}:{S.Chapter}", out var hv) && hv >= 1 && !S.Flags.ContainsKey($"lthunger:{S.Loop}:{S.Chapter}:{(int)hv}"))
+                found.Add(("hunger", ((int)hv).ToString(CultureInfo.InvariantCulture), Has("P03") ?? Has("P06") ?? By(d => S.A(d).Def.Hobbies.Contains("organize") ? 1 : 0)));
+            // 5 buddy: the first morning after a death
+            var lastDeath = LifeLastDeath();
+            if (meal == "breakfast" && lastDeath != null && !S.Flags.ContainsKey("ltbuddy:" + lastDeath.Victim) && S.Flags.ContainsKey("ltdeath:" + lastDeath.Victim))
+                found.Add(("buddy", lastDeath.Victim, Has("P03") ?? Has("P05") ?? diners[0]));
+            // 6 conflict: a quarrel yesterday or today, both at the table
+            foreach (var f in S.Flags.Keys.Where(k => k.StartsWith("lconf:", StringComparison.Ordinal)).OrderBy(k => k, StringComparer.Ordinal).ToList())
+            {
+                var p = f.Split(':'); if (p.Length < 4 || !int.TryParse(p[1], out var d) || S.Day - d > 1) continue;
+                if (diners.Contains(p[2]) && diners.Contains(p[3]) && !S.Flags.ContainsKey($"ltconf:{p[1]}:{p[2]}:{p[3]}")) { found.Add(("conflict", p[2] + ":" + p[3], p[3])); break; }
+            }
+            // 7 event: a festival today that hasn't started, its host at the table
+            var fest = S.Gatherings.Where(g => g.Kind != null && g.Kind.StartsWith("fest:") && !g.Done && !g.Cancelled && g.Revs.Count > 0 && (int)(g.Cur.Start / 1440) + 1 == S.Day && g.Cur.Start > S.Clock).OrderBy(g => g.Cur.Start).FirstOrDefault();
+            if (fest != null && diners.Contains(fest.Host) && !S.Flags.ContainsKey("ltevent:" + fest.Id)) found.Add(("event", fest.Id, fest.Host));
+            // 8 absent: a living resident who didn't come (breakfast/dinner), 서윤 counts heads
+            if (meal != "lunch")
+            {
+                // not at the table and not on the way to it (asleep, shut in, busy elsewhere)
+                var din = S.Layout.First(RoomType.Dining);
+                var absent = S.LivingNpcs.Where(x => !diners.Contains(x.Id) && (din == null || x.Room != din.Id) && (x.Act == null || x.Act.Id != "life:eat")).OrderBy(x => x.Id, StringComparer.Ordinal).ToList();
+                if (absent.Count > 0 && absent.Count <= 6 && diners.Count >= 3)
+                { var ab = absent[LR.R(absent.Count)]; found.Add(("absent", ab.Id, Has("P03") ?? By(d => S.R(d, ab.Id).Like))); }
+            }
+            // 9 rumour: known to two or more at the table
+            var rum = RumoursAt(diners);
+            if (rum != null) found.Add(("rumour", rum.Value.rid, rum.Value.carrier));
+            // 10 habit: someone whose habit the table hasn't heard
+            var hab = diners.Where(d => !S.Flags.ContainsKey($"lthabit:{S.Loop}:{d}") && LineBank.Pool(d, "tt_habit", CasualTo(d, null), out _) != null).OrderBy(d => d, StringComparer.Ordinal).ToList();
+            if (hab.Count > 0) { var h = hab[LR.R(hab.Count)]; found.Add(("habit", h, h)); }
+            // 11 food
+            found.Add(("food", null, Has("P10") ?? By(d => S.A(d).Def.Hobbies.Contains("cook") ? 1 : 0)));
+            // the strongest (1–6) wins outright; among the everyday ones (7–11) avoid last meal's kind
+            var strong = found.FirstOrDefault(f => Array.IndexOf(TopicOrder, f.kind) < 6 && f.kind != "envelope" || f.kind == "envelope");
+            if (strong.kind != null && (Array.IndexOf(TopicOrder, strong.kind) < 6 || strong.kind == "envelope")) return strong;
+            // everyday topics: not last meal's kind, and the ones this loop hasn't heard yet first (the table keeps changing)
+            string lastKind = S.Flags.TryGetValue("ltt:lastkind", out var lk) ? TopicOrder[Math.Max(0, Math.Min(TopicOrder.Length - 1, (int)lk))] : null;
+            var everyday = found.Where(f => f.kind != lastKind).ToList(); if (everyday.Count == 0) everyday = found;
+            var fresh = everyday.Where(f => !S.Flags.ContainsKey($"lttk:{S.Loop}:{f.kind}")).ToList();
+            var pool = fresh.Count > 0 ? fresh : everyday;
+            return pool.Count > 1 && LR.Chance(0.4) ? pool[1 + LR.R(pool.Count - 1)] : pool[0];
+        }
+
+        // ------------------------------------------------------------------ building the scene
+        SceneRun TableBuild(List<string> diners, string meal, bool withPlayer)
+        {
+            if (diners.Count < 2) return null;
+            var (kind, subject, owner) = PickTopic(diners, meal);
+            if (owner == null || !diners.Contains(owner)) owner = diners[0];
+            var sc = new GenScene { Id = $"gen:table:{S.Day}:{meal}", Kind = "table", Title = TopicTitle(kind), Npc = owner };
+            var run = new SceneRun { Scene = sc, Kind = "table", Npc = owner, Room = S.A(owner)?.Room ?? -1 };
+            run.Ctx["topic"] = kind; run.Ctx["owner"] = owner;
+            run.Cast.AddRange(diners); if (withPlayer) run.Cast.Add(Cast.Player);
+            string a = null, b = null;
+            switch (kind)
+            {
+                case "death": run.Ctx["victim"] = subject; run.Ctx["t"] = subject; break;
+                case "verdict": if (subject != null) { run.Ctx["victim"] = subject; run.Ctx["t"] = subject; } break;
+                case "rule": case "envelope": { var ri = S.Ch.Rules.FirstOrDefault(r => r.Id == subject || r.Rule == subject); run.Ctx["rule"] = ri?.Name ?? "새 규칙"; break; }
+                case "hunger": run.Ctx["n"] = KorCount(S.Survivors); break;
+                case "buddy": run.Ctx["victim"] = subject; break;
+                case "conflict": { var p = subject.Split(':'); a = p[0]; b = p[1]; run.Ctx["a"] = a; run.Ctx["b"] = b; run.Ctx["t"] = a; break; }
+                case "event": { var g = S.Gatherings.FirstOrDefault(x => x.Id == subject); if (g != null) { run.Ctx["act"] = g.Label; run.Ctx["place"] = g.Cur.Room.ToString(CultureInfo.InvariantCulture); run.Ctx["time"] = g.Cur.Start.ToString(CultureInfo.InvariantCulture); run.Ctx["gid"] = g.Id; } break; }
+                case "absent": run.Ctx["t"] = subject; break;
+                case "rumour": { var r = RumourOf(owner, subject); if (r != null) { run.Ctx["rumour"] = RumourText(r.Value, owner); run.Ctx["t"] = r.Value.a; run.Ctx["rid"] = subject; } break; }
+                case "habit": run.Ctx["t"] = owner; break;
+            }
+            var beat = new LBeat { Id = "start" }; sc.Beats.Add(beat);
+            // the opener
+            string openKey = kind == "conflict" ? "tt_conflict" : kind == "verdict" ? "tt_verdict" : kind == "envelope" ? "env_open" : "tt_" + kind;
+            string openTo = kind == "conflict" ? a : null;
+            beat.Lines.Add(KeyLine(owner, openTo, openKey, kind == "death" || kind == "verdict" ? Emotion.Sad : kind == "conflict" ? Emotion.Angry : Emotion.Neutral));
+            // special voices for a death: 준서 counts the spoons, 은결 lays a lily on the chair
+            if (kind == "death")
+            {
+                if (diners.Contains("P10") && owner != "P10") beat.Lines.Add(KeyLine("P10", owner, "tt_spoons", Emotion.Sad));
+                if (diners.Contains("P14") && owner != "P14") beat.Lines.Add(KeyLine("P14", owner, "tt_lily", Emotion.Sad));
+            }
+            // the other party of a quarrel answers first
+            if (kind == "conflict" && diners.Contains(a)) beat.Lines.Add(KeyLine(a, owner, "argue_reply", Emotion.Angry));
+            if (kind == "rumour" && run.Ctx.TryGetValue("t", out var subj) && diners.Contains(subj) && subj != owner) beat.Lines.Add(KeyLine(subj, owner, "rumour_deny", Emotion.Angry));
+            // 2–3 reactors, those with a tie to the opener first (their pair lines land)
+            var used = new HashSet<string>(beat.Lines.Select(l => l.Who));
+            var reactors = diners.Where(d => !used.Contains(d)).OrderByDescending(d => (CastWeb.TieBetween(d, owner) != null ? 2 : 0) + LineBank.Variants(d, $"tt_{(kind == "envelope" ? "envelope" : kind)}_re@{owner}") + LR.F()).ThenBy(d => d, StringComparer.Ordinal).Take(kind == "food" || kind == "habit" ? 2 : 3).ToList();
+            foreach (var r in reactors) beat.Lines.Add(KeyLine(r, owner, $"tt_{(kind == "envelope" ? "envelope" : kind)}_re", Emotion.Neutral));
+            beat.Lines.RemoveAll(l => l == null);
+            if (withPlayer) foreach (var o in TableOptions(kind, owner, a, b, diners, run)) beat.Opts.Add(o);
+            // bookkeeping: this meal has had its topic
+            S.Flags[$"ltt:{S.Day}:{meal}"] = S.Clock; S.Flags["ltt:lastkind"] = Array.IndexOf(TopicOrder, kind == "envelope" ? "rule" : kind);
+            S.Flags[$"lttk:{S.Loop}:{kind}"] = S.Day; LFinc($"ltt:n:{S.Loop}");
+            switch (kind)
+            {
+                case "death": S.Flags["ltdeath:" + subject] = S.Clock; break;
+                case "verdict": { var s0 = S.Settlements.Where(s => s.Loop == S.Loop && s.Applied && !S.Flags.ContainsKey("ltver:" + s.Id)).LastOrDefault(); if (s0 != null) S.Flags["ltver:" + s0.Id] = S.Clock; break; }
+                case "rule": case "envelope": S.Flags["ltrule:" + subject] = S.Clock; break;
+                case "hunger": S.Flags[$"lthunger:{S.Loop}:{S.Chapter}:{subject}"] = S.Clock; break;
+                case "buddy": S.Flags["ltbuddy:" + subject] = S.Clock; break;
+                case "conflict": { var p = subject.Split(':'); foreach (var f in S.Flags.Keys.Where(k => k.EndsWith(":" + p[0] + ":" + p[1], StringComparison.Ordinal) && k.StartsWith("lconf:", StringComparison.Ordinal)).ToList()) { var q = f.Split(':'); S.Flags[$"ltconf:{q[1]}:{p[0]}:{p[1]}"] = S.Clock; } break; }
+                case "event": S.Flags["ltevent:" + subject] = S.Clock; break;
+                case "habit":
+                    S.Flags[$"lthabit:{S.Loop}:{owner}"] = S.Clock;
+                    Foreshadow.HabitShared(this, owner, "table:" + meal, diners.Concat(withPlayer ? new[] { Cast.Player } : new string[0]));
+                    if (withPlayer) PK.Facts.Add("habit:" + owner);
+                    break;
+                case "rumour": if (run.Ctx.TryGetValue("rid", out var rid)) { var rr = RumourOf(owner, rid); if (rr != null) foreach (var d in diners.Concat(withPlayer ? new[] { Cast.Player } : new string[0])) RumourLearn(d, rr.Value, owner); } break;
+            }
+            S.Log("TableTopic", owner, data: $"{meal}:{kind}:{subject}:{string.Join(",", diners)}:{(withPlayer ? "player" : "npc")}");
+            return run;
+        }
+
+        /// <summary>A table line from a voice key; the shared ANY line when the speaker has none.</summary>
+        LL KeyLine(string who, string to, string key, Emotion e)
+        {
+            if (who == null) return null;
+            // resolved later per run (RunFrom → LifeU): the template is fetched now so the resolver's pair/about tiers apply
+            return new LL { Who = who, Text = "\u0001" + key + (to != null ? "\u0002" + to : ""), Emo = e, Gest = e == Emotion.Angry ? Anim.Angry : Anim.Talk };
+        }
+
+        static string TopicTitle(string kind)
+        {
+            switch (kind)
+            {
+                case "death": return "빈자리"; case "verdict": return "심판 다음 날"; case "rule": return "새 규칙"; case "envelope": return "봉투";
+                case "hunger": return "줄어든 식사"; case "buddy": return "짝"; case "conflict": return "어제의 말다툼"; case "event": return "오늘의 모임";
+                case "absent": return "빈 의자"; case "rumour": return "소문"; case "habit": return "버릇"; default: return "오늘의 식탁";
+            }
+        }
+
+        /// <summary>민혁's one interjection at the table (±0.03–0.06 on the relevant people, DailyLife §3.2).</summary>
+        List<LOpt> TableOptions(string kind, string owner, string a, string b, List<string> diners, SceneRun run)
+        {
+            var list = new List<LOpt>(); string O = owner;
+            LOpt Opt(string label, string labelC = null) => new LOpt { Label = label, LabelC = labelC };
+            LFx F(string from, string to, float like = 0, float trust = 0, float attach = 0, float grudge = 0, float respect = 0, string mem = null) => new LFx { From = from, To = to, Like = like, Trust = trust, Attach = attach, Grudge = grudge, Respect = respect, Memory = mem };
+            string Name(string id) => CallName(Cast.Player, id);
+            switch (kind)
+            {
+                case "death":
+                    list.Add(Opt("{victim} 자리는 오늘 그대로 둬요.").Do(F(O, "me", attach: 0.04f, trust: 0.02f, mem: "빈자리를 그대로 두자고 했다")).Do(diners.Where(d => d != O).Select(d => F(d, "me", like: 0.01f)).ToArray()));
+                    list.Add(Opt($"{Name(O)}, 괜찮아요?").Do(F(O, "me", trust: 0.04f, attach: 0.03f, mem: "식탁에서 먼저 내 안부를 물었다")));
+                    list.Add(Opt("말없이 수저를 내려놓는다").Act().Do(F(O, "me", respect: 0.02f)));
+                    break;
+                case "verdict":
+                    list.Add(Opt("오늘은 아무 말 안 해도 돼요.").Do(diners.Select(d => F(d, "me", like: 0.015f)).ToArray()));
+                    list.Add(Opt($"{Name(O)} 탓이 아니에요.").Do(F(O, "me", trust: 0.05f, attach: 0.02f, mem: "내 탓이 아니라고 해 줬다")));
+                    list.Add(Opt("말없이 빵을 반으로 가른다").Act().Do(F(diners.OrderByDescending(d => S.A(d).Needs.Grief).First(), "me", like: 0.03f)));
+                    break;
+                case "rule": case "envelope":
+                    list.Add(Opt($"그건 {Name(O)}이(가) 말할 일이에요.").Do(F(O, "me", trust: 0.05f, mem: "규칙 앞에서 내 편을 들어 줬다")));
+                    list.Add(Opt("규칙이 우리한테 뭘 원하는지부터 생각해요.").Do(diners.Select(d => F(d, "me", respect: 0.02f)).ToArray()));
+                    list.Add(Opt("말없이 수저를 든다").Act());
+                    break;
+                case "hunger":
+                    list.Add(Opt($"{Name(O)} 말대로 하나씩 나눠요.").Do(F(O, "me", trust: 0.04f, like: 0.02f)).Do(diners.Where(d => S.A(d).Def.P.Pride > 0.6f && d != O).Select(d => F(d, "me", like: -0.02f)).ToArray()));
+                    if (diners.Contains("P10")) list.Add(Opt("준서 씨도 드셔야죠. 반은 준서 씨 거예요.").Do(F("P10", "me", like: 0.05f, attach: 0.03f, mem: "내 몫을 챙겨 줬다")).Mem("fed_cook"));
+                    else list.Add(Opt("제 몫에서 반 떼 드릴게요.").Do(diners.Select(d => F(d, "me", like: 0.015f)).ToArray()));
+                    list.Add(Opt("말없이 빵을 반으로 갈라 옆에 건넨다").Act().Do(F(diners.OrderByDescending(d => S.A(d).Needs.Hunger).ThenBy(d => d, StringComparer.Ordinal).First(), "me", like: 0.04f)));
+                    break;
+                case "buddy":
+                    foreach (var x in diners.Where(d => d != O).OrderByDescending(d => S.R(Cast.Player, d).Like + S.R(d, Cast.Player).Like).ThenBy(d => d, StringComparer.Ordinal).Take(2))
+                    { var xo = Opt($"저는 {Name(x)}하고 다닐게요.").Do(F(x, "me", like: 0.03f, trust: 0.04f, mem: "짝이 되자고 했다"), F(O, "me", respect: 0.02f)); xo.FactList = "flag:lwatch:" + x; list.Add(xo); }
+                    list.Add(Opt("저는 혼자 다니는 게 편해요.").Do(F(O, "me", like: -0.02f, respect: -0.01f)));
+                    break;
+                case "conflict":
+                    if (a != null && b != null)
+                    {
+                        list.Add(Opt($"{Name(b)} 말이 맞아요.").Do(F(b, "me", like: 0.05f, trust: 0.03f, mem: "식탁에서 내 편을 들어 줬다"), F(a, "me", like: -0.04f, grudge: 0.02f)));
+                        list.Add(Opt($"{Name(a)} 얘기도 끝까지 들어 봐요.").Do(F(a, "me", like: 0.05f, trust: 0.03f, mem: "식탁에서 내 말을 들어 보자고 했다"), F(b, "me", like: -0.03f)));
+                        var calm = Opt("밥 먹을 땐 그만해요. 둘 다요.").Do(F(a, "me", respect: 0.03f), F(b, "me", respect: 0.03f), F(a, b, grudge: -0.03f), F(b, a, grudge: -0.03f));
+                        calm.TieState = $"{a}:{b}:table-truce"; list.Add(calm);
+                    }
+                    break;
+                case "event":
+                    list.Add(Opt("재밌겠네요. 갈게요.").Do(F(O, "me", like: 0.04f, mem: "모임에 오겠다고 했다")).Mem("event_yes"));
+                    list.Add(Opt($"{Name(O)}, 뭐 준비할 거 있어요?").Do(F(O, "me", like: 0.05f, attach: 0.02f)));
+                    list.Add(Opt("안 가도 되는 거죠?").Do(F(O, "me", like: O == "P17" ? -0.03f : -0.01f)));
+                    break;
+                case "absent":
+                    list.Add(Opt("제가 한번 가 볼게요.").Do(F(O, "me", trust: 0.03f)).Mem("checked_absent"));
+                    list.Add(Opt("무슨 일 있는 건 아니겠죠?").Do(F(O, "me", like: 0.01f)));
+                    list.Add(Opt("자는 거겠죠. 식기 전에 먹어요.").Do(F(O, "me", respect: -0.02f)));
+                    break;
+                case "rumour":
+                    list.Add(Opt("그거 누가 처음 한 말이에요?").Do(F(O, "me", respect: 0.02f)));
+                    list.Add(Opt("직접 본 사람 있어요?").Do(diners.Select(d => F(d, "me", respect: 0.015f)).ToArray()));
+                    { string subj = run.Ctx.TryGetValue("t", out var t0) ? t0 : null; var o3 = Opt("없는 사람 얘기는 그만해요.").Do(F(O, "me", like: -0.02f)); if (subj != null) o3.Do(F(subj, "me", trust: 0.04f, like: 0.02f, mem: "소문 앞에서 내 편을 들어 줬다")); list.Add(o3); }
+                    break;
+                case "habit":
+                    list.Add(Opt("그거 전혀 몰랐어요.").Do(F(O, "me", like: 0.02f)));
+                    list.Add(Opt("저도 비슷한 버릇 있어요.").Do(F(O, "me", like: 0.03f, attach: 0.01f)).Mem("same_habit"));
+                    list.Add(Opt("말없이 고개를 끄덕인다").Act());
+                    break;
+                default:
+                    if (O == "P10") { list.Add(Opt("오늘 국 진짜 맛있어요.").Do(F("P10", "me", like: 0.04f))); list.Add(Opt("준서 씨도 앉아서 같이 드세요.").Do(F("P10", "me", like: 0.03f, attach: 0.03f, mem: "같이 앉아서 먹자고 했다")).Mem("sit_with_cook")); }
+                    else { list.Add(Opt("오늘 음식 맛있네요.").Do(diners.Select(d => F(d, "me", like: 0.01f)).ToArray())); list.Add(Opt($"{Name(O)}, 이거 좀 드셔 보세요.").Do(F(O, "me", like: 0.03f))); }
+                    list.Add(Opt("말없이 한 숟가락 더 뜬다").Act());
+                    break;
+            }
+            return list;
+        }
+
+        void TableNpcOnly(SceneRun run)
+        {
+            var diners = run.Cast.Where(x => x != Cast.Player).ToList();
+            foreach (var p in diners) foreach (var q in diners) if (p != q) Relations.Change(S, p, q, like: 0.004f);
+            if (run.Ctx.TryGetValue("topic", out var kind))
+            {
+                if (kind == "conflict" && run.Ctx.TryGetValue("a", out var a) && run.Ctx.TryGetValue("b", out var b)) { Relations.Change(S, a, b, grudge: 0.02f); Relations.Change(S, b, a, grudge: 0.02f); }
+                if (kind == "death") foreach (var p in diners) foreach (var q in diners) if (p != q) Relations.Change(S, p, q, attach: 0.01f);
+                if (kind == "buddy") for (int i = 0; i + 1 < diners.Count; i += 2) { S.R(diners[i], diners[i + 1]).Tags.Add("watch"); S.R(diners[i + 1], diners[i]).Tags.Add("watch"); }
+            }
+        }
+
+        /// <summary>18 → "열여덟" (seat counts, heads).</summary>
+        internal static string KorCount(int n)
+        {
+            string[] ones = { "", "하나", "둘", "셋", "넷", "다섯", "여섯", "일곱", "여덟", "아홉" };
+            if (n <= 0) return "아무도"; if (n < 10) return ones[n]; if (n == 10) return "열"; if (n < 20) return "열" + ones[n - 10]; if (n == 20) return "스물";
+            return n.ToString(CultureInfo.InvariantCulture);
+        }
+    }
+}

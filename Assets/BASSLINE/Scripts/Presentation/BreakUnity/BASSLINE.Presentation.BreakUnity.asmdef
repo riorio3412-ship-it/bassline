@@ -1,0 +1,6 @@
+{
+  "name": "BASSLINE.Presentation.BreakUnity",
+  "rootNamespace": "BASSLINE.Presentation",
+  "references": ["BASSLINE.Presentation.Break"],
+  "autoReferenced": false
+}
