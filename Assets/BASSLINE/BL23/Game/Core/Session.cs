@@ -16,7 +16,7 @@ namespace BL23.Game
         public static Session I;
         public Simulation Sim; public GameState S => Sim.S;
         public WorldPresenter World; public PlayerController Player; public Hud Hud; public DialogueUI Dialogue; public NoteUI Note; public TrialDirectorUI Trial; public RevealPlayer Reveal;
-        public MenuUI Menu; public AnnouncementUI Announcer; public CinematicUI Cine;
+        public MenuUI Menu; public AnnouncementUI Announcer; public CinematicUI Cine; public RoomCardUI RoomCard;
         readonly HashSet<string> _pause = new HashSet<string>();
         public bool Paused => _pause.Count > 0;
         public float Speed = 1f;          // time acceleration while waiting
@@ -184,6 +184,7 @@ namespace BL23.Game
             Reveal = gameObject.AddComponent<RevealPlayer>(); Safe(() => Reveal.Init(this));
             Menu = gameObject.AddComponent<MenuUI>(); Safe(() => Menu.Init(this));
             Cine = gameObject.AddComponent<CinematicUI>(); Safe(() => Cine.Init(this));
+            RoomCard = gameObject.AddComponent<RoomCardUI>(); Safe(() => RoomCard.Init(this));   // the owner's room paintings (Resources/Rooms)
             TimeDir = gameObject.AddComponent<TimeDirector>(); Safe(() => TimeDir.Init(this));   // --- time-on-demand
             _loopSeen = S.Loop; _chapterSeen = S.Chapter;
         }

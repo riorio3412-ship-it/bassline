@@ -21,7 +21,7 @@ namespace BL23.Sim
             new HostKind { Id = "tea",        Label = "차 모임",          Rooms = new[] { RoomType.TeaRoom, RoomType.Lounge, RoomType.Greenhouse, RoomType.Parlor }, Serve = true },
             new HostKind { Id = "cards",      Label = "카드 게임의 밤",    Rooms = new[] { RoomType.GameRoom, RoomType.Lounge, RoomType.Parlor } },
             new HostKind { Id = "music",      Label = "작은 연주회",       Rooms = new[] { RoomType.MusicRoom, RoomType.Theater, RoomType.Parlor }, Dark = true },
-            new HostKind { Id = "reading",    Label = "촛불 낭독회",       Rooms = new[] { RoomType.Library, RoomType.Study, RoomType.Chapel }, Dark = true },
+            new HostKind { Id = "reading",    Label = "촛불 낭독회",       Rooms = new[] { RoomType.Library, RoomType.Study, RoomType.Chapel, RoomType.SecretStacks }, Dark = true },
             new HostKind { Id = "film",       Label = "상영회",           Rooms = new[] { RoomType.Theater, RoomType.Lounge }, Dark = true },
             new HostKind { Id = "show",       Label = "무대 발표회",       Rooms = new[] { RoomType.Theater, RoomType.MusicRoom }, Dark = true },
             new HostKind { Id = "rehearsal",  Label = "낭독극 리허설",     Rooms = new[] { RoomType.Theater, RoomType.MusicRoom, RoomType.Chapel }, Dark = true },
@@ -29,7 +29,7 @@ namespace BL23.Sim
             new HostKind { Id = "wine",       Label = "와인 시음회",       Rooms = new[] { RoomType.WineCellar, RoomType.Dining, RoomType.Lounge, RoomType.Parlor }, Serve = true },
             new HostKind { Id = "birthday",   Label = "생일 축하 자리",    Rooms = new[] { RoomType.Dining, RoomType.Lounge, RoomType.TeaRoom }, Serve = true },
             new HostKind { Id = "inspection", Label = "지하 점검",         Rooms = new[] { RoomType.BoilerRoom, RoomType.WineCellar, RoomType.Storage, RoomType.MachineRoom, RoomType.WaterRoom }, Dark = true },
-            new HostKind { Id = "memorial",   Label = "추모 모임",         Rooms = new[] { RoomType.Chapel, RoomType.Lounge } , Dark = true },
+            new HostKind { Id = "memorial",   Label = "추모 모임",         Rooms = new[] { RoomType.Chapel, RoomType.Oracle, RoomType.Lounge } , Dark = true },
             new HostKind { Id = "photo",      Label = "단체 사진 촬영",    Rooms = new[] { RoomType.Gallery, RoomType.Lounge, RoomType.Greenhouse } },
         };
         public static string HostLabel(string id) { foreach (var h in HostKinds) if (h.Id == id) return h.Label; return "모임"; }

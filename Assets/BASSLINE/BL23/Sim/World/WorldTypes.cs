@@ -12,7 +12,9 @@ namespace BL23.Sim
         // 용도 불명 (MysteryRoomArchetype)
         RainCorridor, EmptyAuditorium, WaitingRoom, WhiteDoors, MirrorWater, ClockMuseum,
         // 사건을 돕는 방 (BL23 살인 콘텐츠: 증거 소각·저온 보관·암실) — appended so saved ids of the rooms above keep their values
-        Incinerator, ColdStorage, Darkroom
+        Incinerator, ColdStorage, Darkroom,
+        // 오너의 방 그림 (SocialEventsDesign §5): 행사·보물찾기·트릭의 무대 — appended so saved ids of the rooms above keep their values
+        Observatory, Oracle, ContractRoom, DreamRoom, SecretStacks, Lab, PhoneRoom, Armory, Gym, Pantry
     }
 
     public static class RoomInfo
@@ -70,6 +72,16 @@ namespace BL23.Sim
                 case RoomType.Incinerator: return "소각실";
                 case RoomType.ColdStorage: return "저온 보관실";
                 case RoomType.Darkroom: return "사진 암실";
+                case RoomType.Observatory: return "관측실";
+                case RoomType.Oracle: return "신탁실";
+                case RoomType.ContractRoom: return "계약의 방";
+                case RoomType.DreamRoom: return "꿈 기록실";
+                case RoomType.SecretStacks: return "비밀 서고";
+                case RoomType.Lab: return "실험실";
+                case RoomType.PhoneRoom: return "전화실";
+                case RoomType.Armory: return "무기고";
+                case RoomType.Gym: return "체육실";
+                case RoomType.Pantry: return "식료품 저장실";
             }
             return t.ToString();
         }

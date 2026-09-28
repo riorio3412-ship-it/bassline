@@ -29,6 +29,7 @@ namespace BL23.Sim
         static readonly (RoomType room, string item, string[] on)[] Arsenal =
         {
             (RoomType.TrophyRoom, "HuntingShotgun", new[] { "DisplayCase", "Cabinet", "Pedestal", "StuffedBeast" }),
+            (RoomType.Armory, "Crossbow", new[] { "DisplayCase", "Chest", "Pedestal" }),   // the armory, where the mansion has one (SocialEventsDesign §5)
             (RoomType.TrophyRoom, "Crossbow", new[] { "Pedestal", "DisplayCase", "Cabinet" }),
             (RoomType.Study, "Revolver", new[] { "Desk", "Console", "Cabinet" }),
             (RoomType.Parlor, "DuelingPistol", new[] { "Console", "SideTable", "Cabinet" }),
@@ -52,7 +53,7 @@ namespace BL23.Sim
             foreach (var (rt, type, on) in Arsenal)
             {
                 if (ItemCatalog.Get(type) == null) continue;
-                if (type == "Crossbow" && placed.Contains("Crossbow")) continue;   // one crossbow: the trophy room's, else the gallery's
+                if (type == "Crossbow" && placed.Contains("Crossbow")) continue;   // one crossbow: the armory's, else the trophy room's, else the gallery's
                 if (type == "BoltQuiver" && placed.Contains("BoltQuiver")) continue;
                 var room = S.Layout.Rooms.Where(r => r.Type == rt && !r.Void).OrderBy(r => r.Id).FirstOrDefault(); if (room == null) continue;
                 var near = new P3(room.Floor, room.Rect.CX, room.Rect.CZ);

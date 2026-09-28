@@ -47,7 +47,7 @@ namespace BL23.Sim
             var d = new CaseDeck { Incident = inc.Id, Loop = S.Loop, Chapter = S.Chapter, Frozen = S.Clock, FrozenSeq = S.Seq, Source = C.Pack != null ? "pack,legacy" : "legacy" };
             double u = MurderHash.U01(S, "deck-fakes:" + inc.Id); d.FakeTarget = u < 0.25 ? 4 : u < 0.75 ? 5 : 6;
             var cands = new List<Plate>();
-            FeedBody(C, cands); FeedTraces(C, cands); FeedFurniture(C, cands); FeedItems(C, cands); FeedWitness(C, cands); FeedCulpritSeen(C, cands); FeedHunt(C, cands); FeedMasque(C, cands); FeedAlibi(C, cands); FeedCoincidence(C, cands); FeedHeld(C, cands);
+            FeedBody(C, cands); FeedTraces(C, cands); FeedFurniture(C, cands); FeedItems(C, cands); FeedWitness(C, cands); FeedCulpritSeen(C, cands); FeedBeats(C, cands); FeedHunt(C, cands); FeedMasque(C, cands); FeedAlibi(C, cands); FeedCoincidence(C, cands); FeedHeld(C, cands);
             BuildClaims(C, d, cands);
             LinkPlates(C, d, cands);
             Select(C, d, cands);
@@ -99,13 +99,15 @@ namespace BL23.Sim
         // ---- traces at the scene, on the route, or left by the victim; the fake dying message is a Frame
         static void FeedTraces(CaseFacts C, List<Plate> cands)
         {
-            var S = C.S;
+            var S = C.S; var kinds = new HashSet<string>();
             foreach (var t in S.Traces.OrderBy(t => t.Seq))
             {
                 if (t.Cleaned || t.Visibility > 2 || t.Type == "SwitchTouched") continue;
                 bool atScene = (t.Room == C.KillRoom || t.Room == C.FoundRoom) && t.Clock >= C.W0 && t.Clock <= C.W1 + 5;
                 bool route = t.Source != null && t.Source == C.Culprit && t.Clock >= C.W0 - 60 && t.Clock <= C.W1;
                 if (!(t.Victim == C.VictimId || atScene || route)) continue;
+                // one photograph per kind of mark per room: a trail of six drag marks is one plate, not six
+                if (t.Type != "BloodWriting" && !kinds.Add(t.Type + ":" + t.Room)) continue;
                 var props = new List<Prop> { new Prop { Kind = PropKind.TraceAt, A = t.Victim, Room = t.Room, T0 = t.Clock, T1 = t.Clock, Value = t.Desc, Item = t.Type } };
                 var lines = new List<string>(); if (S.Player != null) SetPieces.TraceNotes(C.Sim, S.Player, t, lines, props);
                 string title = TraceTitles.TryGetValue(t.Type, out var tt) ? tt : Trim(t.Desc, 12);
@@ -293,6 +295,28 @@ namespace BL23.Sim
                         p.Back = LineBank.FixParticles($"{G(C.Culprit)}의 옷에 묻은 건 피였다 — 공격한 뒤였다."); cands.Add(p);
                     }
                 }
+            }
+        }
+
+        // ---- what someone saw the culprit do while getting ready (the scheme's beats: the cup they filled themselves, the weapon they
+        //      took, the note slipped under a door, the little gift that marks someone in the dark) — innocent then, the proof now
+        static void FeedBeats(CaseFacts C, List<Plate> cands)
+        {
+            var S = C.S; if (C.Culprit == null || S.Mur == null || C.Inc.PlanId == null) return;
+            var sc = Initiative.ByPlan(S, C.Inc.PlanId); if (sc == null) return;
+            int Rank(string k) => k == "serve" ? 5 : k == "poison" || k == "obtain" ? 4 : k == "note" || k == "mark" || k == "stash" ? 3 : k == "garb" || k == "appoint" ? 2 : 1;
+            int n = 0;
+            foreach (var b in S.Mur.Beats.Where(b => b.Scheme == sc.Id && b.Actor == C.Culprit && b.Kind != "firstin" && b.Loop == S.Loop && b.Clock <= C.FoundClock).OrderByDescending(b => Rank(b.Kind)).ThenBy(b => Math.Abs(b.Clock - C.KillClock)).ThenBy(b => b.Id, StringComparer.Ordinal))
+            {
+                var w = b.Observers.Where(o => o != C.Culprit && C.Npcs.Contains(o)).OrderBy(o => o, StringComparer.Ordinal).FirstOrDefault();
+                if (w == null || string.IsNullOrEmpty(b.Text)) continue;
+                var props = new List<Prop> { new Prop { Kind = PropKind.AtPlace, A = C.Culprit, Room = b.Room, T0 = b.Clock, T1 = b.Clock } };
+                var it = b.Item != null ? S.I(b.Item) : null;
+                if (it?.Def != null && it.Def.IsWeapon) props.Add(new Prop { Kind = PropKind.Held, A = C.Culprit, Item = it.Type, Room = b.Room, T0 = b.Clock, T1 = b.Clock });
+                var p = NewPlate(C, "beat:" + b.Id, PlateKind.Witness, PlateRole.Link, true, $"{G(w)}이(가) 본 것", $"{ClockFmt.Anchor(b.Clock)}, {S.RoomName(b.Room)}. {b.Text} — {G(w)}", b.Room, b.Clock, b.Clock, props);
+                p.Witness = w; p.Seen = C.Culprit; p.Title = LineBank.FixParticles(p.Title); p.Face = LineBank.FixParticles(p.Face);
+                p.Back = LineBank.FixParticles(string.IsNullOrEmpty(b.Meaning) ? b.Text : $"그때는 {b.Innocent ?? "아무렇지 않아 보였다"} — 사실은 {b.Meaning}.");
+                cands.Add(p); if (++n >= 2) return;
             }
         }
 
@@ -610,13 +634,15 @@ namespace BL23.Sim
         static void Select(CaseFacts C, CaseDeck d, List<Plate> cands)
         {
             var S = C.S;
-            const int WitnessCap = 4;
+            const int WitnessCap = 5, FakeWitnessCap = 3;
             var all = new List<Plate>();
             int Wit() => all.Count(p => p.Kind == PlateKind.Witness);
             bool Take(Plate p, string why)
             {
                 if (p == null || all.Contains(p) || all.Any(x => x.Root == p.Root)) return false;
-                if (p.Kind == PlateKind.Witness && Wit() >= WitnessCap && why != "link") { d.Log.Add("witness cap: " + p.Root + " (" + why + ")"); return false; }
+                // fakes never fill the witness stand on their own: the sound that sets the time and the culprit's ties keep a place
+                if (p.Kind == PlateKind.Witness && !p.True && all.Count(x => x.Kind == PlateKind.Witness && !x.True) >= FakeWitnessCap) { d.Log.Add("fake witness cap: " + p.Root); return false; }
+                if (p.Kind == PlateKind.Witness && Wit() >= WitnessCap && why != "link" && why != "sound") { d.Log.Add("witness cap: " + p.Root + " (" + why + ")"); return false; }
                 all.Add(p); return true;
             }
             // fakes first (the boss first): a route, a user, ≤2 pointing at one person
@@ -688,7 +714,7 @@ namespace BL23.Sim
             var l1 = d.Claims.Where(c => c.Layer == 1 && c.Truth != "true").Select(c => c.Id).ToList();
             foreach (var c in l1) if (!d.Plates.Any(p => p.True && p.Breaks.Contains(c))) d.Log.Add("claim unbreakable by a plate: " + c);
             foreach (var f in d.Plates.Where(p => !p.True)) if (f.Users.Count == 0 || f.Routes.Count == 0) d.Log.Add("fake without user/route: " + f.Root);
-            if (d.Plates.Count(p => p.Kind == PlateKind.Witness) > 4) d.Log.Add("too many witness plates");
+            if (d.Plates.Count(p => p.Kind == PlateKind.Witness) > 7) d.Log.Add("too many witness plates");
         }
     }
 }

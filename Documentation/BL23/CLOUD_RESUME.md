@@ -20,11 +20,10 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
    HANDOFF.md(§0.5 오너 원문, §1 지시, §3.0000 최신), DecisionLog.md(D-040 이후).
 2) 준비: dotnet SDK 10 설치(없으면). Tests/BL23/SimTests에서 dotnet build -c Release 후
    "dotnet run -c Release -- campaign 20260926 6"이 faults=0, roundtrip=IDENTICAL인지 확인.
-3) 구현: SocialEventsDesign.md §6 표의 순서대로 한 단계씩 한다.
-   (1 파벌 → 2 저택 행사 → 3 주민 모임 장면 → 4 심판 연결 → 5 새 방)
-   - 이미 된 단계는 CloudWorkLog.md "기록"으로 확인하고 다음 단계부터 한다.
+3) 구현: SocialEventsDesign.md §6의 5단계까지는 끝났다. CloudWorkLog.md §8 "다음에 할 일"과
+   "기록"의 마지막 줄들을 보고 이어서 한다.
 4) 단계마다 검증: SimTests에서 premise 20260926 9, life, campaign 20260926 6,
-   debate 20260926 smart, "voice lint out.txt"를 돌린다.
+   debate 20260926 smart(그리고 4242, 2), "voice lint out.txt"를 돌린다.
    faults=0, 세이브 왕복 IDENTICAL, 보이스 팩 위반 0이어야 한다.
    살인이 바뀌는 작업이면 "firsts 1 40 9 active"로 첫 살인 분포도 본다(한 범인이 35%를 넘지 않게).
 5) 단계마다 기록: 통과하면 커밋·푸시(브랜치 claude/ecstatic-mccarthy-w08ico, 기존 커밋 수정 금지).
@@ -40,7 +39,8 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
 **어디까지 했나 (2026-09-28 기준)**
 - §6의 1~3단계(파벌, 저택 행사, 주민 모임 장면)는 끝났다.
 - 4단계(심판 연결)도 끝났다: 보물찾기 구역 알리바이·은판, 가면의 밤 은판, 파벌 항의.
-  다음은 5단계(새 방 종류와 배경 카드)다.
+- 5단계: 새 방 10종과 방 배경 카드(`Game/UI/RoomCardUI.cs`)까지 했다. 그림 파일 이름표는 SocialEventsDesign §5.
+- 덱 개선으로 심판 정답률(40시드) 87.5%.
 - 첫 살인 다양화(저택의 편지)와 결정성 버그 수정도 했다. 측정 도구는 `firsts`, `staticcheck` 모드다.
 - 자세한 진행은 `CloudWorkLog.md` "기록"의 마지막 줄들을 본다.
 
@@ -90,7 +90,10 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
   $files = @(
     'Assets/BASSLINE/BL23/Game/Core/Session.cs',
     'Assets/BASSLINE/BL23/Game/UI/NoteUI.cs',
+    'Assets/BASSLINE/BL23/Game/UI/RoomCardUI.cs',
+    'Assets/BASSLINE/BL23/Game/UI/RoomCardUI.cs.meta',
     'Assets/BASSLINE/BL23/Game/World/WorldPresenter.cs',
+    'Assets/BASSLINE/BL23/Sim/Content/Activities.cs',
     'Assets/BASSLINE/BL23/Sim/Content/LineBank.cs',
     'Assets/BASSLINE/BL23/Sim/Content/Lines_Debate.cs',
     'Assets/BASSLINE/BL23/Sim/Content/Lines_Debate.cs.meta',
@@ -159,6 +162,8 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
     'Assets/BASSLINE/BL23/Sim/Violence/Assaults.cs',
     'Assets/BASSLINE/BL23/Sim/Violence/Firearms.cs',
     'Assets/BASSLINE/BL23/Sim/Violence/ViolencePlans.cs',
+    'Assets/BASSLINE/BL23/Sim/World/Decorator.cs',
+    'Assets/BASSLINE/BL23/Sim/World/LayoutGenerator.cs',
     'Assets/BASSLINE/BL23/Sim/World/WorldTypes.cs',
     'Documentation/BL23/CLOUD_RESUME.md',
     'Documentation/BL23/CharacterBible.md',
@@ -174,6 +179,7 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
     'Tests/BL23/SimTests/FirstsScan.cs',
     'Tests/BL23/SimTests/FurnitureKnowledgeTest.cs',
     'Tests/BL23/SimTests/PremiseTest.cs',
+    'Tests/BL23/SimTests/RoomCensus.cs',
     'Tests/BL23/SimTests/StaticCheck.cs'
   )
   $tmp = Join-Path $env:TEMP 'bassline_cloud_apply'
@@ -195,6 +201,9 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
 3. Unity를 열어 컴파일이 끝나기를 기다린다.
 4. PC에서 확인할 것:
    - `cd Tests/BL23/GameCompile && dotnet build -c Release`에서 오류가 0개인지.
+   - 새 파일 `Game/UI/RoomCardUI.cs`: 클라우드에서는 스텁으로만 컴파일했다. Unity에서 오류가 없는지, 방 그림을
+     `Assets/BASSLINE/BL23/Resources/Rooms/`에 넣으면 그 방에 처음 들어갈 때 카드가 뜨는지.
+   - 새 방 10종(관측실·신탁실 등)이 저택에 보이는지, 가구가 제자리에 놓이는지.
    - 게임 1일차:
      - 아침 식탁 「약속」 장면이 나오는지.
      - 2일차 아침에 「소원의 견본」 공지와 식탁이 나오는지.

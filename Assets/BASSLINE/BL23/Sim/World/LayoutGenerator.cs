@@ -248,8 +248,10 @@ namespace BL23.Sim
             if (!AssignBedrooms(f1, rng, out fail)) return null;
             if (!Assign(f1, req1, rng, out fail)) return null;
             if (!Assign(fb, reqb, rng, out fail)) return null;
-            AssignLeftovers(f0, rng, new[] { (RoomType.Study, 1), (RoomType.TeaRoom, 1), (RoomType.Courtyard, 1), (RoomType.DollRoom, 1), (RoomType.TrophyRoom, 1), (RoomType.Parlor, 1) }, RoomType.Parlor);
-            AssignLeftovers(f1, rng, new[] { (RoomType.Study, 1), (RoomType.DollRoom, 1), (RoomType.TeaRoom, 1), (RoomType.TrophyRoom, 1), (RoomType.GuestRoom, 2), (RoomType.Parlor, 1) }, RoomType.GuestRoom);
+            // the owner's rooms (SocialEventsDesign §5) take leftover areas that would otherwise be one more parlour or guest room
+            AssignLeftovers(f0, rng, new[] { (RoomType.Study, 1), (RoomType.TeaRoom, 1), (RoomType.Courtyard, 1), (RoomType.DollRoom, 1), (RoomType.TrophyRoom, 1), (RoomType.Parlor, 1), (RoomType.Armory, 1), (RoomType.Gym, 1), (RoomType.Pantry, 1) }, RoomType.Parlor);
+            AssignLeftovers(f1, rng, new[] { (RoomType.Study, 1), (RoomType.DollRoom, 1), (RoomType.TeaRoom, 1), (RoomType.TrophyRoom, 1), (RoomType.GuestRoom, 2), (RoomType.Parlor, 1),
+                (RoomType.Observatory, 1), (RoomType.Oracle, 1), (RoomType.ContractRoom, 1), (RoomType.DreamRoom, 1), (RoomType.SecretStacks, 1), (RoomType.Lab, 1), (RoomType.PhoneRoom, 1) }, RoomType.GuestRoom);
             AssignLeftovers(fb, rng, new[] { (RoomType.WineCellar, 1), (RoomType.BoilerRoom, 1), (RoomType.Storage, 1) }, RoomType.Closet);
 
             // ---------- emit rooms ----------
@@ -800,6 +802,16 @@ namespace BL23.Sim
                 case RoomType.Study: return rng.Pick(new[] { "GildedRot", "Nocturne", "CobaltCandle" });
                 case RoomType.WineCellar: case RoomType.BoilerRoom: case RoomType.Incinerator: return rng.Pick(new[] { "GildedRot", "BloodOpera", "Absinthe" });
                 case RoomType.GuestRoom: case RoomType.Bedroom: return All[rng.R(All.Length)];
+                case RoomType.Observatory: return rng.Pick(new[] { "Nocturne", "CobaltCandle", "TealAbyss" });
+                case RoomType.Oracle: return rng.Pick(new[] { "Amethyst", "Nocturne", "BloodOpera" });
+                case RoomType.ContractRoom: return rng.Pick(new[] { "BloodOpera", "GildedRot" });
+                case RoomType.DreamRoom: return rng.Pick(new[] { "MoonMint", "Amethyst", "PeachMold" });
+                case RoomType.SecretStacks: return rng.Pick(new[] { "GildedRot", "Nocturne" });
+                case RoomType.Lab: return rng.Pick(new[] { "Absinthe", "MoonMint", "BoneIvory" });
+                case RoomType.PhoneRoom: return rng.Pick(new[] { "CobaltCandle", "GildedRot" });
+                case RoomType.Armory: return rng.Pick(new[] { "BloodOpera", "GildedRot" });
+                case RoomType.Gym: return rng.Pick(new[] { "BoneIvory", "MoonMint" });
+                case RoomType.Pantry: return rng.Pick(new[] { "GildedRot", "Absinthe", "PeachMold" });
             }
             return All[rng.R(All.Length)];
         }
@@ -811,6 +823,7 @@ namespace BL23.Sim
                 case RoomType.PowerRoom: case RoomType.MachineRoom: return 0.55f; case RoomType.Chapel: return 0.6f; case RoomType.RainCorridor: return 0.4f;
                 case RoomType.EmptyAuditorium: return 0.35f; case RoomType.Theater: return 0.6f;
                 case RoomType.Darkroom: return 0.22f; case RoomType.ColdStorage: return 0.5f; case RoomType.Incinerator: return 0.5f;
+                case RoomType.Observatory: return 0.45f; case RoomType.Oracle: return 0.4f; case RoomType.DreamRoom: return 0.5f; case RoomType.SecretStacks: return 0.55f; case RoomType.Pantry: return 0.5f;
             }
             return 0.85f;
         }

@@ -884,6 +884,72 @@ namespace BL23.Sim
                         d.ItemOn(dt, "DevChemical"); d.Item("Camera", cx, cz);
                         break;
                     }
+                // the owner's rooms (SocialEventsDesign §5): furnished from the existing catalogue; what they are for is in the pieces
+                case RoomType.Observatory:
+                    {
+                        d.Must(() => d.Center("Telescope", wide ? 0 : 90)); d.Wall("Desk", wide ? 1 : 3, 0.25f); d.Wall("Bookshelf", wide ? 1 : 3, 0.75f); d.Wall("Globe", wide ? 0 : 2, 0.2f); d.Wall("Chair", wide ? 0 : 2, 0.7f);
+                        d.Item("Notebook", cx + 0.8f, cz + 0.4f); d.Spot("view", cx, cz - 1.2f, 0); d.Spot("stand", cx + 1.1f, cz, 90);
+                        break;
+                    }
+                case RoomType.Oracle:
+                    {
+                        d.Rug(cx, cz, wide ? 3.2f : 2.4f, wide ? 2.4f : 3.2f);
+                        var alt = d.Must(() => d.Ensure("Altar", wide ? 1 : 3)); d.Wall("Candelabra", wide ? 1 : 3, 0.12f); d.Wall("Candelabra", wide ? 1 : 3, 0.88f);
+                        d.Wall("Mirror", wide ? 0 : 2, 0.5f); d.Wall("Bench", wide ? 0 : 2, 0.2f);
+                        d.ItemOn(alt, "Candlestick"); d.Item("Statuette", cx - 0.8f, cz); d.Spot("pray", cx, cz, 0); d.Spot("sit", cx + 0.9f, cz + 0.6f, 180);
+                        break;
+                    }
+                case RoomType.ContractRoom:
+                    {
+                        var t = d.Must(() => d.Center("LongTable", wide ? 0 : 90));
+                        if (t != null) foreach (float o in new[] { -0.9f, 0f, 0.9f }) { if (wide) { d.Place("Chair", t.Pos.x + o, t.Pos.z - 0.85f, 0, true); d.Place("Chair", t.Pos.x + o, t.Pos.z + 0.85f, 180, true); } else { d.Place("Chair", t.Pos.x - 0.85f, t.Pos.z + o, 90, true); d.Place("Chair", t.Pos.x + 0.85f, t.Pos.z + o, 270, true); } }
+                        d.Wall("Lectern", wide ? 1 : 3, 0.5f); d.Wall("FileCabinet", wide ? 0 : 2, 0.2f); d.Wall("Candelabra", wide ? 0 : 2, 0.8f);
+                        d.ItemOn(t, "Document"); d.ItemOn(t, "Envelope"); d.ItemOn(t, "LetterOpener");
+                        break;
+                    }
+                case RoomType.DreamRoom:
+                    {
+                        d.Wall("DayBed", wide ? 1 : 3, 0.35f); d.Line("FileCabinet", wide ? 0 : 2, 0.25f, 2); d.Wall("Gramophone", wide ? 1 : 3, 0.85f); d.Wall("Armchair", wide ? 0 : 2, 0.85f);
+                        d.Item("Recorder", cx, cz); d.Item("Notebook", cx + 0.6f, cz - 0.4f); d.Item("Pillow", cx - 0.7f, cz + 0.3f); d.Spot("rest", cx, cz + 0.8f, 0); d.Spot("listen", cx + 1f, cz, 270);
+                        break;
+                    }
+                case RoomType.SecretStacks:
+                    {
+                        d.Line("Bookshelf", wide ? 1 : 3, 0.12f, 4); d.Line("Bookshelf", wide ? 0 : 2, 0.2f, 2); d.Wall("CardCatalog", wide ? 0 : 2, 0.85f);
+                        var rt = d.Center("ReadingTable", wide ? 0 : 90); d.Wall("Chest", wide ? 0 : 2, 0.5f);
+                        d.ItemOn(rt, "Book"); d.ItemOn(rt, "Document"); d.Item("Bookend", cx + 0.9f, cz); d.Spot("read", cx, cz + 0.9f, 180);
+                        break;
+                    }
+                case RoomType.Lab:
+                    {
+                        var wb = d.Must(() => d.Ensure("Workbench", wide ? 1 : 3)); d.Wall("MedCabinet", wide ? 0 : 2, 0.25f); d.Wall("Shelves", wide ? 0 : 2, 0.75f); d.Wall("Sink", wide ? 1 : 3, 0.9f);
+                        d.ItemOn(wb, "DevChemical"); d.ItemOn(wb, "Bottle"); d.Item("Scalpel", cx + 0.5f, cz); d.Spot("work", cx, cz, 0);
+                        break;
+                    }
+                case RoomType.PhoneRoom:
+                    {
+                        var c = d.Must(() => d.Ensure("Console", wide ? 1 : 3)); d.Wall("Chair", wide ? 1 : 3, 0.8f); d.Wall("Clock", wide ? 0 : 2, 0.5f); d.Wall("SideTable", wide ? 0 : 2, 0.2f);
+                        d.ItemOn(c, "Notebook"); d.ItemOn(c, "Document"); d.Spot("sit", cx, cz, 0);
+                        break;
+                    }
+                case RoomType.Armory:
+                    {
+                        d.Line("DisplayCase", wide ? 1 : 3, 0.3f, 3); d.Wall("Statue", wide ? 0 : 2, 0.2f); d.Wall("Statue", wide ? 0 : 2, 0.8f); d.Wall("Chest", wide ? 0 : 2, 0.5f);
+                        d.Item("FirePoker", cx, cz); d.Spot("view", cx, cz + 0.8f, 0);
+                        break;
+                    }
+                case RoomType.Gym:
+                    {
+                        d.Must(() => d.Center("PunchingBag", 0, wide ? -R.W * 0.2f : 0, wide ? 0 : -R.D * 0.2f)); d.Wall("Bench", wide ? 1 : 3, 0.3f); d.Wall("Bench", wide ? 1 : 3, 0.7f); d.Wall("Mirror", wide ? 0 : 2, 0.5f); d.Wall("Shelves", wide ? 0 : 2, 0.15f);
+                        d.Item("Rope", cx + 0.8f, cz); d.Item("Towel", cx - 0.6f, cz + 0.5f); d.Spot("play", cx + (wide ? R.W * 0.15f : 0), cz + (wide ? 0 : R.D * 0.15f), 0); d.Spot("stand", cx, cz + 1f, 180);
+                        break;
+                    }
+                case RoomType.Pantry:
+                    {
+                        d.Line("Shelves", wide ? 1 : 3, 0.12f, 4); d.Wall("Barrel", wide ? 0 : 2, 0.2f); d.Wall("Crates", wide ? 0 : 2, 0.7f);
+                        d.Item("Bread", cx, cz); d.Item("Snack", cx + 0.5f, cz + 0.3f); d.Item("Tea", cx - 0.5f, cz); d.Spot("stand", cx, cz + 0.6f, 0); d.Spot("work", cx + 0.8f, cz, 90);
+                        break;
+                    }
                 case RoomType.GuestRoom:
                     {
                         var gb = d.Wall("Bed", rng.R(4), 0.4f); if (gb != null) Bedside(d, gb, rng, false); d.Wall("Wardrobe", rng.R(4), 0.8f);
@@ -961,6 +1027,16 @@ namespace BL23.Sim
                 case RoomType.Incinerator: return S(0.45f, new[] { "Crates", "Shelves", "Barrel", "Crates" }, new[] { "Crates", "Barrel" });
                 case RoomType.ColdStorage: return S(0.5f, new[] { "Shelves", "Crates", "ColdLocker" }, new[] { "Crates", "Shelves" });
                 case RoomType.Darkroom: return S(0.45f, new[] { "Shelves", "Console", "Chest", "FileCabinet" }, new[] { "Console", "Chest" });
+                case RoomType.Observatory: return S(0.35f, new[] { "Bookshelf", "Console", "Chair", "Plant", "Globe" }, new[] { "Console", "Chair", "Bench" });
+                case RoomType.Oracle: return S(0.3f, new[] { "Candelabra", "Statue", "Bench", "Candelabra" }, new[] { "Candelabra", "Bench" });
+                case RoomType.ContractRoom: return S(0.4f, new[] { "FileCabinet", "Cabinet", "Console", "Candelabra", "Chair" }, new[] { "Console", "Chair", "Chest" });
+                case RoomType.DreamRoom: return S(0.4f, new[] { "FileCabinet", "Console", "Plant", "Armchair" }, new[] { "Console", "Chest", "Armchair" });
+                case RoomType.SecretStacks: return S(0.6f, new[] { "Bookshelf", "Bookshelf", "Bookshelf", "Cabinet", "FileCabinet" }, new[] { "Chest", "CardCatalog", "Console" });
+                case RoomType.Lab: return S(0.45f, new[] { "Shelves", "MedCabinet", "Workbench", "Cabinet" }, new[] { "Console", "Chest", "Crates" });
+                case RoomType.PhoneRoom: return S(0.35f, new[] { "Console", "Chair", "Plant", "Cabinet" }, new[] { "Console", "Chair", "Bench" });
+                case RoomType.Armory: return S(0.45f, new[] { "DisplayCase", "Pedestal", "Statue", "Chest", "Cabinet" }, new[] { "Chest", "Pedestal", "Bench" });
+                case RoomType.Gym: return S(0.35f, new[] { "Shelves", "Bench", "Mirror", "Plant" }, new[] { "Bench", "Crates" });
+                case RoomType.Pantry: return S(0.55f, new[] { "Shelves", "Shelves", "Crates", "Barrel" }, new[] { "Crates", "Barrel" });
             }
             return null;
         }
@@ -1069,6 +1145,16 @@ namespace BL23.Sim
                 case RoomType.Infirmary: return new List<string> { "display", "carrel" };
                 case RoomType.Bedroom: case RoomType.GuestRoom: return new List<string> { "nook", "reading", "gramophone", "console" };
                 case RoomType.MachineRoom: case RoomType.Storage: case RoomType.BoilerRoom: case RoomType.Laundry: return new List<string> { "crates", "crates", "chest" };
+                case RoomType.Observatory: return new List<string> { "telescope", "globe", "reading", "nook" };
+                case RoomType.Oracle: return new List<string> { "candles", "statue", "cage" };
+                case RoomType.ContractRoom: return new List<string> { "lectern", "cabinet", "candles" };
+                case RoomType.DreamRoom: return new List<string> { "gramophone", "daybed", "nook", "catalog" };
+                case RoomType.SecretStacks: return new List<string> { "stacks", "catalog", "carrel", "stacks", "reading" };
+                case RoomType.Lab: return new List<string> { "display", "carrel", "crates" };
+                case RoomType.PhoneRoom: return new List<string> { "nook", "console" };
+                case RoomType.Armory: return new List<string> { "display", "statue", "chest", "display" };
+                case RoomType.Gym: return new List<string> { "punch", "bench", "ottomans" };
+                case RoomType.Pantry: return new List<string> { "pantry", "crates", "crates" };
             }
             return new List<string>();
         }
@@ -1304,6 +1390,10 @@ namespace BL23.Sim
                 case RoomType.WineCellar: return new[] { "barrel", "crates" };
                 case RoomType.BoilerRoom: case RoomType.PowerRoom: case RoomType.WaterRoom: case RoomType.MachineRoom: case RoomType.Incinerator: return new[] { "crates" };
                 case RoomType.ButlerRoom: return new[] { "table4" };
+                case RoomType.SecretStacks: return new[] { "shelfrow", "table" };
+                case RoomType.Lab: return new[] { "workbench", "table" };
+                case RoomType.Pantry: return new[] { "shelfrow", "crates" };
+                case RoomType.Observatory: case RoomType.DreamRoom: return new[] { "seating" };
             }
             return null;
         }

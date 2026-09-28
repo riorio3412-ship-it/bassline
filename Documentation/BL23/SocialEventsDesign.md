@@ -101,8 +101,8 @@
 
 ## 5. 방 카탈로그 (오너 그림 48장, 2026-09-28)
 - 그림 파일은 채팅으로만 받아서 저장소에 없다.
-- 프로젝트에 넣을 때는 `Assets/BASSLINE/BL23/Art/Rooms/`에 `{세트}_{번호}_{이름}.png`로 둔다. 예: `Mystic_10_인형보존실.png`
-- 방 첫 방문 때 미연시식 배경 카드로 쓴다(Game 레이어, 후속).
+- 프로젝트에 넣는 위치와 파일 이름은 아래 "배경 카드 그림 파일 이름" 표를 따른다(`Resources/Rooms/`).
+- 방 첫 방문 때 미연시식 배경 카드로 쓴다(`Game/UI/RoomCardUI.cs`).
 
 | 세트 | 번호·이름 | 대응 방 종류 | 트릭 쓰임새 |
 |---|---|---|---|
@@ -155,9 +155,46 @@
 | 공용 | 15 옥상 | (새) Rooftop | 추락, 관측회 |
 | 공용 | 16 별관(지하) | Storage / WineCellar 계열 | 숨기기 |
 
-- "(새)" 표시는 아직 `RoomType`에 없는 방이다.
-- 새 방은 `WorldTypes.RoomType` 끝에 덧붙인다(세이브 값 유지).
-- 새 방을 생성기에 넣는 작업은 레이아웃·장식·Game 표현까지 걸린다. 그래서 **행사와 트릭은 먼저 있는 방으로 돌리고, 새 방은 후속 과제로 둔다.**
+- "(새)" 표시였던 방 가운데 10종을 추가했다(2026-09-28, 5단계): 관측실(Observatory), 신탁실(Oracle), 계약의 방(ContractRoom), 꿈 기록실(DreamRoom), 비밀 서고(SecretStacks), 실험실(Lab), 전화실(PhoneRoom), 무기고(Armory), 체육실(Gym), 식료품 저장실(Pantry).
+  - `RoomType` 끝에 덧붙여 세이브 값이 유지된다. 레이아웃의 남는 칸(1층 응접실, 2층 손님방이 되던 자리)에 들어간다.
+  - 가구는 기존 목록으로 채운다(망원경, 제단, 긴 탁자와 강대상, 녹음 장치와 긴 의자, 책장과 목록함, 작업대와 약장, 전화 콘솔, 유리 진열장, 샌드백, 선반).
+  - 쓰임: 별 보는 밤은 관측실 우선, 밤의 기도는 예배실 또는 신탁실, 보물찾기 구역, 낭독회(비밀 서고)와 추모 모임(신탁실), 석궁은 무기고 우선, 일상 활동(독서·조사·운동·추모·물건 교환·휴식·구경).
+  - 아직 없는 것: 지하통로(Tunnel), 옥상(Rooftop). 동선과 층 구조가 필요해서 후속 과제로 남긴다.
+- Game 쪽 모습: 새 방은 기존 방의 기본 벽지·조명으로 그려지고, 방마다 놓인 가구로 구별된다. 전용 벽지와 소품은 PC(Unity)에서 할 일이다.
+
+### 배경 카드 그림 파일 이름
+- 방 종류를 처음 들어갈 때(세션마다 종류별 한 번) 그림이 화면을 채우고 방 이름이 뜬다(`Game/UI/RoomCardUI.cs`, 약 3초).
+- 그림은 `Assets/BASSLINE/BL23/Resources/Rooms/`에 아래 이름의 PNG로 넣는다. 그림이 없는 방은 카드 없이 지나간다.
+- 같은 종류의 그림이 둘이면 `_2`를 붙인다. 방마다 번호에 따라 둘 중 하나가 나온다.
+
+| 그림 | 파일 이름 | | 그림 | 파일 이름 |
+|---|---|---|---|---|
+| 신비 01 신탁실 | `Oracle.png` | | 기능 01 재판장 | `Courtroom_2.png` |
+| 신비 02 기억보관실 | `Archive.png` | | 기능 02 의료실 | `Infirmary.png` |
+| 신비 03 별관측 온실 | `Greenhouse.png` | | 기능 03 세탁실 | `Laundry.png` |
+| 신비 04 계약의 방 | `ContractRoom.png` | | 기능 04 창고 | `Storage.png` |
+| 신비 05 반전회랑 | `RainCorridor.png` | | 기능 05 공방 | `Workshop.png` |
+| 신비 06 물거울 홀 | `MirrorWater.png` | | 기능 06 기록보관실 | `Archive_2.png` |
+| 신비 07 시간정지 서고 | `ClockMuseum.png` | | 기능 07 응접실 | `Parlor.png` |
+| 신비 08 월광 목욕실 | `WaterRoom.png` | | 기능 08 손님방 | `GuestRoom.png` |
+| 신비 09 잊힌 예배실 | `Chapel.png` | | 기능 09 집무실 | `Study.png` |
+| 신비 10 인형 보존실 | `DollRoom.png` | | 기능 10 식료품 저장실 | `Pantry.png` |
+| 신비 11 꿈 기록실 | `DreamRoom.png` | | 기능 11 기계실 | `MachineRoom.png` |
+| 신비 12 역설 계단실 | `Stairwell.png` | | 기능 12 지하통로 | `Corridor_2.png` |
+| 신비 13 새장 정원 | `Courtyard.png` | | 기능 13 전망회랑 | `Gallery.png` |
+| 신비 14 침묵 재판장 | `Courtroom.png` | | 기능 14 관측실 | `Observatory.png` |
+| 신비 15 별비 수조실 | `Pool_2.png` | | 기능 15 비밀서고 | `SecretStacks.png` |
+| 신비 16 봉인된 별관 | `Storage_2.png` | | 기능 16 전화실 | `PhoneRoom.png` |
+| 공용 01 메인홀 | `GrandHall.png` | | 공용 09 실험실 | `Lab.png` |
+| 공용 02 다이닝룸 | `Dining.png` | | 공용 10 수영장 | `Pool.png` |
+| 공용 03 주방 | `Kitchen.png` | | 공용 11 체육실 | `Gym.png` |
+| 공용 04 무기고 | `Armory.png` | | 공용 12 욕실 | `WaterRoom_2.png` |
+| 공용 05 휴게실 | `Lounge.png` | | 공용 13 개인실 | `Bedroom.png` |
+| 공용 06 도서실 | `Library.png` | | 공용 14 복도 | `Corridor.png` |
+| 공용 07 아케이드 | `GameRoom.png` | | 공용 15 옥상 | `Rooftop.png` (방이 생기면 쓴다) |
+| 공용 08 예배당 | `Chapel_2.png` | | 공용 16 별관(지하) | `WineCellar.png` |
+
+- Unity에서 PNG를 넣은 뒤 Texture Type은 기본값(Default)이면 된다. 큰 그림은 Max Size를 2048로 두면 충분하다.
 
 ---
 
@@ -173,6 +210,6 @@
 
 각 단계는 `premise`·`life`·`campaign`·`debate` 회귀와 세이브 동일을 확인한 뒤 커밋한다.
 
-**진행 (2026-09-28):** 1~4단계 완료. 5단계(새 방)가 남았다.
+**진행 (2026-09-28):** 1~5단계 완료. 5단계는 새 방 10종과 배경 카드 UI까지 했다(지하통로·옥상, 새 방 전용 벽지는 후속).
 - 4단계에서 만든 것: 보물찾기 구역 알리바이·구역표 은판(참가하지 않은 사람 포함)·구역 밖 목격 은판, 가면의 밤 핏자국 가면 은판·가면 오인 은판·익명 이탈 기록, 파벌 항의(리더가 감싸고 경쟁 리더가 받아친다).
 - 행사 중 살인 심판을 따로 보는 실험 모드: `eventcase <from> <to> [days] [masque|banquet|hunt|stars|vigil|any]`.

@@ -32,6 +32,7 @@ public static partial class Program
         if (mode == "premise") return PremiseTest(args);   // PremiseTest.cs: the invitation, the pact, the wall and the house's pushes, as a transcript
         if (mode == "staticcheck") return StaticCheck(args); // StaticCheck.cs: does a game depend on a game run before it in the same process?
         if (mode == "eventcase") return EventCase(args);   // EventCase.cs: the 심판 of a murder staged at a house evening (masque, banquet, hunt…)
+        if (mode == "rooms") return RoomCensus(args);      // RoomCensus.cs: room types per floor over many layouts
         if (mode == "firsts") return FirstsScan(args);     // FirstsScan.cs: the loop's first murder over many seeds — who, how, when (variety)
         Console.WriteLine("unknown mode " + mode); return 1;
     }

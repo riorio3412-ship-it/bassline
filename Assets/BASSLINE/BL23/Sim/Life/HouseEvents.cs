@@ -29,8 +29,8 @@ namespace BL23.Sim
             new Kind { Id = "banquet", Title = "저택의 연회", Rooms = new[] { RoomType.GrandHall, RoomType.Dining }, Start = 19 * 60 + 40, Len = 90, Dark = "toast", Appeal = "party" },
             new Kind { Id = "masque", Title = "가면의 밤", Rooms = new[] { RoomType.GrandHall, RoomType.Theater, RoomType.Lounge }, Start = 20 * 60 + 30, Len = 80, Masks = true, Appeal = "party" },
             new Kind { Id = "hunt", Title = "저택 보물찾기", Rooms = new[] { RoomType.GrandHall, RoomType.Lounge }, Start = 14 * 60, Len = 100, Hunt = true, Appeal = "game" },
-            new Kind { Id = "stars", Title = "별 보는 밤", Rooms = new[] { RoomType.Greenhouse, RoomType.Courtyard }, Start = 21 * 60, Len = 70, Dark = "whole", Appeal = "read" },
-            new Kind { Id = "vigil", Title = "밤의 기도", Rooms = new[] { RoomType.Chapel }, Start = 21 * 60, Len = 50, Dark = "whole" },
+            new Kind { Id = "stars", Title = "별 보는 밤", Rooms = new[] { RoomType.Observatory, RoomType.Greenhouse, RoomType.Courtyard }, Start = 21 * 60, Len = 70, Dark = "whole", Appeal = "read" },
+            new Kind { Id = "vigil", Title = "밤의 기도", Rooms = new[] { RoomType.Chapel, RoomType.Oracle }, Start = 21 * 60, Len = 50, Dark = "whole" },
         };
         internal static Kind KindOf(Gathering g) => g?.Kind != null && g.Kind.StartsWith("house:", StringComparison.Ordinal) ? Kinds.FirstOrDefault(k => "house:" + k.Id == g.Kind) : null;
         public static bool IsHouse(Gathering g) => g?.Kind != null && g.Kind.StartsWith("house:", StringComparison.Ordinal);
@@ -266,7 +266,9 @@ namespace BL23.Sim
 
         static bool HuntRoom(RoomType t) => t == RoomType.Library || t == RoomType.Archive || t == RoomType.Storage || t == RoomType.Gallery || t == RoomType.ClockMuseum
             || t == RoomType.WineCellar || t == RoomType.Study || t == RoomType.Workshop || t == RoomType.TrophyRoom || t == RoomType.DollRoom || t == RoomType.MirrorWater
-            || t == RoomType.MusicRoom || t == RoomType.Wardrobe || t == RoomType.Greenhouse;
+            || t == RoomType.MusicRoom || t == RoomType.Wardrobe || t == RoomType.Greenhouse
+            || t == RoomType.Observatory || t == RoomType.Oracle || t == RoomType.DreamRoom || t == RoomType.SecretStacks || t == RoomType.Lab || t == RoomType.Armory
+            || t == RoomType.Gym || t == RoomType.Pantry || t == RoomType.PhoneRoom || t == RoomType.ContractRoom;
 
         /// <summary>Each minute: the toast's darkness, a dark evening's lights, the masks, the search.</summary>
         void HouseEventMinute(int mod)

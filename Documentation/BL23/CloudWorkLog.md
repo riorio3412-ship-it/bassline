@@ -250,3 +250,9 @@ dotnet run -c Release -- voice lint out.txt       # 보이스 팩 위반 0
   - 파벌 항의(D-054, `DebateTheories.FactionStand`, 대사 `re_faction_stand`/`re_faction_jab`). 시드 777: 좌중이 예담에게 쏠리자 파벌 리더 시온이 감싼다.
   - 실험 모드 `eventcase`: 행사 중 살인의 심판만 골라 대본으로 본다. 결과: 가면의 밤(시드 19)·연회(시드 11) 정답. 보물찾기(시드 8)는 오판 — 생존자 6명, 복도 교살, 산 목격자 없음. 시뮬레이션상 증거가 거의 없는 사건이다.
   - 검증: life faults 0, campaign faults 0 IDENTICAL, 심판 20260926·777·4242 정답, 보이스 팩 위반 0, premise faults 0 IDENTICAL.
+- 2026-09-28: **SocialEventsDesign §6 5단계 — 새 방과 배경 카드, 그리고 덱 개선.**
+  - 새 방 10종(D-056): `WorldTypes.RoomType`, `LayoutGenerator`(남는 칸·색·밝기), `Decorator`(가구·벽 세트·가운데 섬·구역), `Activities`, `HouseEvents`(별 보는 밤 관측실 우선, 기도 신탁실, 보물찾기 구역), `InitiativeDesign.HostKinds`(낭독회 비밀 서고, 추모 신탁실), `ViolencePlans`(석궁 무기고 우선). 레이아웃 20개 기준 새 방이 55~90% 확률로 나온다(`rooms` 모드).
+  - 배경 카드(D-057): `Game/UI/RoomCardUI.cs`(+ `.meta`), `Session`에 연결. 그림 이름표는 `SocialEventsDesign.md` §5. Unity 없이 스텁으로 컴파일만 확인했다 — PC에서 실제 컴파일과 화면 확인이 필요하다.
+  - 덱(D-058): 목격된 준비 장면 은판(`DeckBuild.FeedBeats`), 흔적 중복 제거, 가짜 목격 상한 3·소리 은판 보장. 40시드 심판 정답률 87.5%(35/40), 첫 범인 도윤 30%·12명.
+  - 새 방 때문에 레이아웃이 바뀌어 시드 777의 첫 사건은 토론 심판 대상이 아니게 됐다. 심판 회귀는 20260926·4242·2로 본다.
+  - 검증: life faults 0, campaign faults 0 IDENTICAL, premise faults 0 IDENTICAL, furnknow 33/33, violence faults 0 IDENTICAL, 보이스 팩 위반 0, 심판 20260926·4242·2 정답.
