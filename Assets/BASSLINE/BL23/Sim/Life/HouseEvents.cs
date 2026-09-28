@@ -16,13 +16,18 @@ namespace BL23.Sim
     ///   보물찾기     the house posts who searches where, alone — the victim's hour and room are public (moment "hunt")
     ///   별 보는 밤   the lights off for the whole of it, out under the glass (joined + dark)
     ///   밤의 기도    candles only, eyes closed (joined + dark)
-    /// No random stream is drawn: the kind, the toast's minute and the search zones are hashes.
+    ///   인형극의 밤   the audience in the dark, every eye on the little stage (joined + dark)
+    ///   별비 수조 공연 only the tank glowing, the music over the water (joined + dark)
+    ///   계약의 만찬   a glass raised to the wishes, one of them read out unsigned (joined + serve)
+    ///   전화의 밤     the house puts a call through from outside, one resident at a time, alone in the telephone room at an
+    ///                hour read out in the morning (moment "call"); a call nobody answers is logged — the court's clock
+    /// No random stream is drawn: the kind, the toast's minute, the search zones and the call order are hashes.
     /// </summary>
     public static class HouseEvents
     {
         public static bool Enabled = true;
 
-        internal sealed class Kind { public string Id, Title, Appeal, Dark; public RoomType[] Rooms; public int Start, Len; public bool Masks, Hunt; }
+        internal sealed class Kind { public string Id, Title, Appeal, Dark; public RoomType[] Rooms; public int Start, Len; public bool Masks, Hunt, Calls, Serve; public RoomType? Needs; }
 
         internal static readonly Kind[] Kinds =
         {
@@ -31,6 +36,11 @@ namespace BL23.Sim
             new Kind { Id = "hunt", Title = "저택 보물찾기", Rooms = new[] { RoomType.GrandHall, RoomType.Lounge }, Start = 14 * 60, Len = 100, Hunt = true, Appeal = "game" },
             new Kind { Id = "stars", Title = "별 보는 밤", Rooms = new[] { RoomType.Observatory, RoomType.Greenhouse, RoomType.Courtyard }, Start = 21 * 60, Len = 70, Dark = "whole", Appeal = "read" },
             new Kind { Id = "vigil", Title = "밤의 기도", Rooms = new[] { RoomType.Chapel, RoomType.Oracle }, Start = 21 * 60, Len = 50, Dark = "whole" },
+            // the owner's rooms (SocialEventsDesign §5)
+            new Kind { Id = "puppet", Title = "인형극의 밤", Rooms = new[] { RoomType.DollRoom, RoomType.Theater }, Start = 20 * 60, Len = 60, Dark = "whole", Appeal = "craft" },
+            new Kind { Id = "aquarium", Title = "별비 수조 공연", Rooms = new[] { RoomType.Pool }, Start = 20 * 60 + 10, Len = 60, Dark = "whole", Appeal = "swim" },
+            new Kind { Id = "contract", Title = "계약의 만찬", Rooms = new[] { RoomType.ContractRoom, RoomType.Dining }, Start = 19 * 60 + 50, Len = 70, Serve = true, Appeal = "party" },
+            new Kind { Id = "phone", Title = "전화의 밤", Rooms = new[] { RoomType.Lounge, RoomType.Parlor }, Start = 21 * 60, Len = 120, Calls = true, Needs = RoomType.PhoneRoom },
         };
         internal static Kind KindOf(Gathering g) => g?.Kind != null && g.Kind.StartsWith("house:", StringComparison.Ordinal) ? Kinds.FirstOrDefault(k => "house:" + k.Id == g.Kind) : null;
         public static bool IsHouse(Gathering g) => g?.Kind != null && g.Kind.StartsWith("house:", StringComparison.Ordinal);
@@ -94,6 +104,10 @@ namespace BL23.Sim
                 case "masque": s += p.Pride * 0.2 - p.Fearfulness * 0.3; break;
                 case "banquet": s += 0.1; break;
                 case "hunt": s += p.Curiosity * 0.25 - p.Fearfulness * 0.2; break;
+                case "phone": s += 0.35 + p.WishDesire * 0.2; break;   // a voice from outside
+                case "puppet": s += p.Curiosity * 0.15 + 0.05; break;
+                case "aquarium": s += p.Romance * 0.2 + 0.05; break;
+                case "contract": s += p.WishDesire * 0.25 - p.Honesty * 0.1; break;   // wishes on the table
             }
             // who has already said yes
             string shun = null; double pull = 0;
@@ -114,6 +128,26 @@ namespace BL23.Sim
             }
             return yes;
         }
+        /// <summary>Minutes each call takes on the telephone night (the slot).</summary>
+        public const int CallLen = 8;
+        /// <summary>The telephone night whose calls were running at time t, or null.</summary>
+        public static Gathering CallsAt(GameState S, double t)
+            => S.Gatherings?.Where(g => g.Kind == "house:phone" && !g.Cancelled && g.Revs.Count > 0 && t >= g.Cur.Start && t <= g.Cur.Start + (KindOf(g)?.Len ?? 120) + 10).OrderBy(g => g.Id, StringComparer.Ordinal).FirstOrDefault();
+        /// <summary>When this resident's call is on that night (the read-out order), or -1.</summary>
+        public static double CallSlot(GameState S, Gathering g, string who) => g != null && who != null && S.Flags.TryGetValue($"hevcall:{g.Id}:{who}", out var t) ? t : -1;
+        /// <summary>This resident's coming call on a telephone night not yet over: the telephone room and the hour.</summary>
+        public static bool NextCall(GameState S, string who, out int room, out double at, out Gathering g)
+        {
+            room = -1; at = -1; g = null;
+            foreach (var x in S.Gatherings.Where(x => x.Kind == "house:phone" && !x.Cancelled && x.Revs.Count > 0).OrderBy(x => x.Id, StringComparer.Ordinal))
+            {
+                double t = CallSlot(S, x, who); if (t < 0 || t + CallLen < S.Clock) continue;
+                var pr = S.Layout.Rooms.Where(r => r.Type == RoomType.PhoneRoom && !S.Flags.ContainsKey("swallowed:" + r.Id)).OrderBy(r => r.Id).FirstOrDefault(); if (pr == null) continue;
+                room = pr.Id; at = t; g = x; return true;
+            }
+            return false;
+        }
+
         /// <summary>Is this resident wearing the mask the house handed out for its masquerade?</summary>
         public static bool Masked(GameState S, Actor x) => x?.Disguise != null && S.Flags.ContainsKey($"hevmaskof:{x.Id}") && S.I(x.Disguise)?.Type == "TheaterMask";
         /// <summary>What a mask cannot hide: how tall they stand ("큰 편" · "보통" · "작은 편").</summary>
@@ -144,7 +178,8 @@ namespace BL23.Sim
             if (S.Ch.InvestigationEnd >= 0 && S.Clock < S.Ch.InvestigationEnd) return;
             if (S.Incidents.Values.Any(i => i.Loop == S.Loop && i.Chapter == S.Chapter)) return;   // the house hosts while nothing has happened
             if (S.Flags.ContainsKey($"hevday:{S.Loop}:{S.Day}") || S.Survivors <= S.FloorLocked + 1) return;
-            var kinds = HouseEvents.Kinds.Where(k => S.Layout.Rooms.Any(r => k.Rooms.Contains(r.Type) && !S.Flags.ContainsKey("swallowed:" + r.Id))).ToList();
+            var kinds = HouseEvents.Kinds.Where(k => S.Layout.Rooms.Any(r => k.Rooms.Contains(r.Type) && !S.Flags.ContainsKey("swallowed:" + r.Id))
+                                                     && (k.Needs == null || S.Layout.Rooms.Any(r => r.Type == k.Needs.Value && !S.Flags.ContainsKey("swallowed:" + r.Id)))).ToList();
             var fresh = kinds.Where(k => !S.Flags.ContainsKey($"hev:{S.Loop}:{k.Id}")).ToList(); if (fresh.Count > 0) kinds = fresh;
             if (kinds.Count == 0) return;
             var kind = kinds[(int)(MurderHash.U01(S, $"hevkind:{S.Loop}:{S.Day}") * kinds.Count) % kinds.Count];
@@ -190,6 +225,20 @@ namespace BL23.Sim
                 // three to a page, as 유스티 reads it out
                 slots["list"] = string.Join("|", chart.Select((c, i) => (c, i)).GroupBy(x => x.i / 3).Select(gr => string.Join(", ", gr.Select(x => x.c))));
             }
+            if (k.Calls)
+            {
+                // the call order, read out in the morning: who takes the telephone when, alone, eight minutes each
+                var callers = g.Status.Where(kv => kv.Value == "accepted" || kv.Value == "invited").Select(kv => kv.Key).OrderBy(x => MurderHash.U01(S, "hevcall:" + g.Id + ":" + x)).ThenBy(x => x, StringComparer.Ordinal).ToList();
+                var chart = new List<string>();
+                for (int i = 0; i < callers.Count; i++)
+                {
+                    double at = start + 6 + i * HouseEvents.CallLen;
+                    S.Flags[$"hevcall:{g.Id}:{callers[i]}"] = at;
+                    chart.Add($"{ClockFmt.Mark(at, i == 0)} {Cast.GivenOf(callers[i])} 님");
+                    foreach (var w in S.Living) S.K(w.Id).Facts.Add($"callslot:{g.Id}:{callers[i]}:{(int)at}");
+                }
+                slots["list"] = string.Join("|", chart.Select((c, i) => (c, i)).GroupBy(x => x.i / 4).Select(gr => string.Join(", ", gr.Select(x => x.c))));
+            }
             S.Log("GatheringPlanned", Cast.Butler, data: $"{g.Id} {k.Title} @{room.Name} {ClockFmt.Vague(start)}-{ClockFmt.Vague(end)} guests={string.Join(",", g.Status.Where(kv => kv.Value == "accepted").Select(kv => kv.Key))}");
             S.Log("HouseEvent", Cast.Butler, room: room.Id, data: k.Id + ":" + g.Id);
             LFinc("lhev:total");
@@ -214,7 +263,7 @@ namespace BL23.Sim
             for (int i = 0; i < guests.Count; i++)
             {
                 string to = withPlayer ? Cast.Player : guests.Count > 1 ? guests[(i + 1) % guests.Count] : null;
-                sc.First.Lines.Add(FK(guests[i], "hev_" + k.Id, to, k.Id == "vigil" ? Emotion.Sad : k.Id == "hunt" || k.Id == "banquet" ? Emotion.Smile : Emotion.Neutral));
+                sc.First.Lines.Add(FK(guests[i], "hev_" + k.Id, to, k.Id == "vigil" ? Emotion.Sad : k.Id == "hunt" || k.Id == "banquet" || k.Id == "aquarium" || k.Id == "phone" ? Emotion.Smile : Emotion.Neutral));
             }
             if (!withPlayer || guests.Count == 0) return;
             var beat = sc.First; string first = guests[0];
@@ -239,6 +288,26 @@ namespace BL23.Sim
                     if (near != null) beat.Opts.Add(FO("{t} 씨, 저 별 이름 알아요?", FV(near, "hev_stars_name", "…몰라요. 그래도 같이 보니까 좋네요.", Emotion.Smile)).Do(FFx(near, "me", like: 0.04f, attach: 0.03f, mem: "별 이름을 같이 찾았다")));
                     { var o = FO("다들 소원 하나씩 빌어요. 저택 말고, 별한테요.", FV(first, "hev_stars_wish", "…별한테라면, 빌어도 되겠네요.", Emotion.Smile)).Do(guests.Select(x => FFx(x, "me", like: 0.02f)).ToArray()); if (pact.Length > 0) o.Know("mend:" + pact); beat.Opts.Add(o); }
                     beat.Opts.Add(FO("말없이 하늘을 본다").Act());
+                    break;
+                case "puppet":
+                    beat.Opts.Add(FO("인형들이 우리 얘기를 하는 것 같아요.", FV(first, "hev_puppet_story", "…그러네요. 저 인형, 누구를 닮았어요.", Emotion.Neutral)).Do(guests.Select(x => FFx(x, "me", like: 0.01f)).ToArray()));
+                    if (near != null) beat.Opts.Add(FO("{t} 씨, 불이 켜질 때까지 옆에 있을게요.", FV(near, "hev_puppet_near", "…고마워요. 어두운 건 싫거든요.", Emotion.Smile)).Do(FFx(near, "me", like: 0.04f, attach: 0.02f, mem: "인형극의 어둠 속에서 곁에 있어 줬다")));
+                    beat.Opts.Add(FO("말없이 무대를 본다").Act());
+                    break;
+                case "aquarium":
+                    if (near != null) beat.Opts.Add(FO("{t} 씨, 물가 조심해요. 손 잡아요.", FV(near, "hev_aquarium_hand", "…네. 미끄러우니까요.", Emotion.Smile)).Do(FFx(near, "me", like: 0.04f, attach: 0.03f, mem: "수조 앞에서 손을 잡아 줬다")));
+                    beat.Opts.Add(FO("다들 물가에서 한 발 물러서요.").Do(guests.Select(x => FFx(x, "me", respect: 0.02f)).ToArray()));
+                    beat.Opts.Add(FO("말없이 수조를 본다").Act());
+                    break;
+                case "contract":
+                    { var o = FO("소원은 읽지 말아 주세요. 여기선 그게 칼이 돼요.", FV(first, "hev_contract_stop", "…맞아요. 읽히는 순간 누군가 셈을 하니까요.", Emotion.Neutral)).Do(guests.Select(x => FFx(x, "me", respect: 0.02f)).ToArray()); if (pact.Length > 0) o.Know("mend:" + pact); beat.Opts.Add(o); }
+                    beat.Opts.Add(FO("잔은 각자 따라요. 남의 잔은 건드리지 말고요.", FV(first, "hev_banquet_wary", "…그것도 맞는 말이네요. 저도 한 모금만.", Emotion.Neutral)).Do(guests.Select(x => FFx(x, "me", respect: S.A(x).Def.Obs >= 60 ? 0.03f : 0.01f)).ToArray()));
+                    beat.Opts.Add(FO("말없이 카드를 내려놓는다").Act());
+                    break;
+                case "phone":
+                    if (near != null) beat.Opts.Add(FO("{t} 씨, 통화 끝나면 무슨 말 들었는지 말해 줘요.", FV(near, "hev_phone_tell", "…네. 좋은 소식이면요.", Emotion.Smile)).Do(FFx(near, "me", like: 0.03f, trust: 0.02f, mem: "전화를 기다리며 곁에 있었다")));
+                    beat.Opts.Add(FO("혼자 들어가는 거, 조심해요. 문 앞까지는 같이 가 줄게요.").Do(guests.Select(x => FFx(x, "me", respect: 0.02f, trust: 0.01f)).ToArray()));
+                    beat.Opts.Add(FO("말없이 순서표를 본다").Act());
                     break;
                 case "vigil":
                     { var o = FO("…다들 무사하게 해 주세요.", FV(first, "hev_vigil_amen", "…네. 다들요.", Emotion.Sad)).Do(guests.Select(x => FFx(x, "me", like: 0.01f)).ToArray()); if (pact.Length > 0) o.Know("mend:" + pact); beat.Opts.Add(o); }
@@ -320,6 +389,58 @@ namespace BL23.Sim
                         x.Disguise = null; m.Holder = null; m.Room = x.Room; m.Pos = x.Pos;
                         S.Emit(GameEventType.Disguise, x.Id, data: null); S.Emit(GameEventType.ItemMoved, null, data: m.Id, text: "drop", pos: m.Pos);
                     }
+                }
+                // the contract dinner: twenty minutes in, one wish is read out unsigned — the house's chosen one's if they came.
+                // Those who know the wisher well recognise it; the wisher feels the room look.
+                if (k.Id == "contract" && S.Clock >= start + 20 && !S.Flags.ContainsKey($"hevread:{g.Id}") && S.Phase == Phase.Daily)
+                {
+                    S.Flags[$"hevread:{g.Id}"] = S.Clock;
+                    var here = S.LivingNpcs.Where(x => x.Room == room.Id && g.Status.ContainsKey(x.Id) && !string.IsNullOrEmpty(x.Def.Contract)).OrderBy(x => x.Id, StringComparer.Ordinal).ToList();
+                    string ch = HousePush.Chosen(S);
+                    var who = here.FirstOrDefault(x => x.Id == ch) ?? here.OrderBy(x => MurderHash.U01(S, "hevread:" + g.Id + ":" + x.Id)).FirstOrDefault();
+                    var yu = S.A(Cast.Butler);
+                    if (who != null && yu != null)
+                    {
+                        Speak(yu, "hev_contract_read", null, new Dictionary<string, string> { { "wish", who.Def.Contract } });
+                        who.Needs.Stress = MathX.Clamp01(who.Needs.Stress + 0.06f);
+                        foreach (var x in here.Where(x => x != who && S.HasRel(x.Id, who.Id) && S.R(x.Id, who.Id).Like + S.R(x.Id, who.Id).Trust >= 0.45f))
+                            S.K(x.Id).Facts.Add("knows-wish-of:" + who.Id);
+                        S.Log("ContractRead", Cast.Butler, who.Id, room: room.Id, data: g.Id, secret: true);
+                    }
+                }
+                // the telephone night: at each one's hour they go to the telephone room alone; a call nobody picks up is logged
+                if (k.Calls && S.Phase == Phase.Daily)
+                {
+                    var pr = S.Layout.Rooms.Where(r => r.Type == RoomType.PhoneRoom && !S.Flags.ContainsKey("swallowed:" + r.Id)).OrderBy(r => r.Id).FirstOrDefault();
+                    if (pr != null)
+                        foreach (var kv in g.Status.Where(kv => kv.Value != "declined" && kv.Value != "host").OrderBy(kv => kv.Key, StringComparer.Ordinal).ToList())
+                        {
+                            double at = HouseEvents.CallSlot(S, g, kv.Key); if (at < 0) continue;
+                            var x = S.A(kv.Key);
+                            if (S.Clock >= at - 2 && !S.Flags.ContainsKey($"hevcallgo:{g.Id}:{kv.Key}"))
+                            {
+                                S.Flags[$"hevcallgo:{g.Id}:{kv.Key}"] = S.Clock;
+                                if (x != null && x.Alive && !x.IsPlayer && x.Status == ActorStatus.Active && x.PlanId == null && x.TalkingTo == null && RoomUsable(x, pr))
+                                {
+                                    var act = new Activity { Id = "hev:call:" + g.Id, Label = "전화", Priority = 2.4, Interruptible = true };
+                                    act.Steps.Add(GoTo(RandomPointIn(pr, S.R(Stream.Life))));
+                                    act.Steps.Add(Do("phone", HouseEvents.CallLen - 1, Anim.Talk));
+                                    act.Steps.Add(GoTo(RandomPointIn(room, S.R(Stream.Life))));
+                                    Assign(x, act);
+                                }
+                            }
+                            if (S.Clock >= at + 3 && !S.Flags.ContainsKey($"hevcallchk:{g.Id}:{kv.Key}"))
+                            {
+                                S.Flags[$"hevcallchk:{g.Id}:{kv.Key}"] = S.Clock;
+                                bool answered = x != null && x.Alive && x.Room == pr.Id && x.Status == ActorStatus.Active;
+                                if (!answered && (x == null || !x.IsPlayer))
+                                {
+                                    S.Log("PhoneNoAnswer", Cast.Butler, kv.Key, room: pr.Id, data: g.Id + ":" + (int)at);
+                                    foreach (var w in S.Living) S.K(w.Id).Facts.Add($"callmissed:{g.Id}:{kv.Key}:{(int)at}");
+                                }
+                                else if (answered) S.Log("PhoneAnswered", kv.Key, room: pr.Id, data: g.Id + ":" + (int)at);
+                            }
+                        }
                 }
                 // the search: after the briefing, the hunters go to their posted rooms and look (alone)
                 if (k.Hunt && S.Clock >= start + 10 && !S.Flags.ContainsKey($"hevgo:{g.Id}") && S.Phase == Phase.Daily)

@@ -256,3 +256,7 @@ dotnet run -c Release -- voice lint out.txt       # 보이스 팩 위반 0
   - 덱(D-058): 목격된 준비 장면 은판(`DeckBuild.FeedBeats`), 흔적 중복 제거, 가짜 목격 상한 3·소리 은판 보장. 40시드 심판 정답률 87.5%(35/40), 첫 범인 도윤 30%·12명.
   - 새 방 때문에 레이아웃이 바뀌어 시드 777의 첫 사건은 토론 심판 대상이 아니게 됐다. 심판 회귀는 20260926·4242·2로 본다.
   - 검증: life faults 0, campaign faults 0 IDENTICAL, premise faults 0 IDENTICAL, furnknow 33/33, violence faults 0 IDENTICAL, 보이스 팩 위반 0, 심판 20260926·4242·2 정답.
+- 2026-09-28: **새 저택 행사 네 가지(D-059).** 인형극의 밤, 별비 수조 공연, 계약의 만찬, 전화의 밤. `HouseEvents`(정의·통화 순서·통화·소원 낭독), `Lines_Social`(공지·여는 말·손님 대사·선택지 반응), `HouseEventScene`(선택지), `InitiativeDesign`(`call` 기회·점수·알리바이, 만찬 독살), `DeckBuild.FeedCalls`(순서표·받지 않은 전화).
+  - 20시드 9일: 새 행사 29회 열림. 행사를 노린 설계의 결과를 `firsts … all`의 "event designs"로 본다 — 대부분 "다른 사람이 먼저 죽여서 한도가 참"과 "그래서 행사가 취소됨". 저택 행사는 저녁이고 다른 계획은 오후에 실행되는 경우가 많다.
+  - 긴 어둠 속 습격 개선(D-060). 설계 기록에 행사 종류(` ev=`)를 남긴다.
+  - 검증: life faults 0, campaign faults 0 IDENTICAL, premise IDENTICAL, furnknow 33/33, violence IDENTICAL, 보이스 팩 위반 0(긴 쪽 공지 줄임), 심판 20260926·4242·2 정답.

@@ -471,7 +471,7 @@ namespace BL23.Sim
             var S = sim.S; var t = S.A(st.Actor); var plan = PlanOf(S, a); var sc = OfPlan(S, plan);
             if (t == null || !t.Alive) { sim.Interrupt(a, 1); return; }
             double until = double.TryParse(st.Data, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var u) ? u : S.Clock + 30;
-            if (DarkAt(sim, t) && a.Pos.Dist(t.Pos) < 9f) { if (plan != null) Crime.Advance(sim, a, plan); sim.NextStepPublic(a); return; }
+            if (DarkAt(sim, t) && a.Pos.Dist(t.Pos) < 6.5f) { if (plan != null) Crime.Advance(sim, a, plan); sim.NextStepPublic(a); return; }   // close enough that the dark covers the rest (the strike loses them past 7 m)
             if (S.Clock > until) { if (plan != null) Crime.Abort(sim, a, plan, "끝내 불이 꺼지지 않아서"); sim.Interrupt(a, 1); return; }
             // at an evening: stay in its room and wait for them to come to it (never chase them round the house)
             int room = sc != null && sc.DarkBy != "house" ? (sc.EventRoom >= 0 ? sc.EventRoom : sc.MomentRoom) : -1;
@@ -517,7 +517,14 @@ namespace BL23.Sim
                 sim.Interrupt(a, 0.5); return;
             }
             bool marked = S.K(a.Id).Facts.Contains("mark:" + t.Id + ":" + (OfPlan(S, plan)?.MarkItem ?? "-"));
-            if (!marked && a.Pos.Dist(t.Pos) > 7f) { if (plan != null) Crime.Abort(sim, a, plan, "어둠 속에서 표적을 놓쳐서"); sim.Interrupt(a, 1); return; }
+            if (!marked && a.Pos.Dist(t.Pos) > 7f)
+            {
+                // a whole evening in the dark (the house's stars, candles, puppets, the tank's glow): there is time to find them
+                // again — back to their side, and wait for the dark to cover the last steps
+                double until = double.TryParse(st.Data, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var u) ? u : S.Clock;
+                if (plan != null && S.DarkRooms.Contains(t.Room) && S.Clock < until - 4) { plan.Step = Math.Max(0, plan.Steps.FindIndex(x => x.Kind == "S_Near")); sim.Interrupt(a, 0.3); return; }
+                if (plan != null) Crime.Abort(sim, a, plan, "어둠 속에서 표적을 놓쳐서"); sim.Interrupt(a, 1); return;
+            }
             if (a.Pos.Dist(t.Pos) <= 1.1f)
             {
                 a.Speed = 0;

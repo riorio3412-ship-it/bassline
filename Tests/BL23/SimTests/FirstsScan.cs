@@ -21,6 +21,7 @@ public static partial class Program
         int days = args.Length > 3 && int.TryParse(args[3], out var dd) ? dd : 9; bool active = args.Contains("active"), all = args.Contains("all");
         var seeds = new List<ulong>(); for (ulong s = from; s <= to; s++) seeds.Add(s);
         var rows = new (ulong seed, string line, string culprit, string moment, string approach, string motive)[seeds.Count];
+        var evOutcomes = new List<string>();
         var designs = new List<string>[seeds.Count]; var revises = new List<string>[seeds.Count]; var allMoments = new List<string>[seeds.Count];
         for (int i = 0; i < seeds.Count; i++)
         {
@@ -43,6 +44,15 @@ public static partial class Program
                 if (first != null && !all) break;
             }
             allMoments[i] = S.Incidents.Values.Where(x => x.Murder && x.Culprit != null).OrderBy(x => x.ResultSeq).Select(x => { var q = x.PlanId != null ? Initiative.ByPlan(S, x.PlanId) : null; string ek = q?.EventKind ?? (q?.MomentRef != null ? S.Gatherings.FirstOrDefault(g => g.Id == q.MomentRef)?.Kind : null); return (q?.Moment ?? "improvised") + (ek != null && ek.StartsWith("house:") ? "(" + ek + ")" : ""); }).ToList();
+            // what became of each design staged at a house evening: the next revision's reason, or the kill
+            foreach (var d in S.Ledger.Where(e => e.Type == "SchemeDesign" && e.Data != null && e.Data.Contains(" ev=")).ToList())
+            {
+                string sid = d.Data.Split(' ')[0], evk = d.Data.Substring(d.Data.IndexOf(" ev=") + 4);
+                var next = S.Ledger.Where(e => e.Seq > d.Seq && (e.Type == "SchemeRevise" || e.Type == "SchemeKill" || e.Type == "SchemeDesign") && e.Data != null && e.Data.StartsWith(sid + " ")).OrderBy(e => e.Seq).FirstOrDefault();
+                string outc = next == null ? "open" : next.Type == "SchemeKill" ? "KILL" : next.Type == "SchemeDesign" ? "redesigned" : next.Data.Substring(sid.Length + 1);
+                if (outc.Contains("중단")) outc = outc.Substring(outc.IndexOf("중단")); if (outc.Length > 22) outc = outc.Substring(0, 22);
+                evOutcomes.Add(evk + " → " + outc);
+            }
             designs[i] = S.Ledger.Where(e => e.Type == "SchemeDesign").Select(e => { var p = (e.Data ?? "").Split(' '); return p.Length > 1 ? string.Join("/", p[1].Split('/').Take(2)) : "?"; }).ToList();
             revises[i] = S.Ledger.Where(e => e.Type == "SchemeRevise").Select(e => { var d = e.Data ?? ""; int k = d.IndexOf(' '); d = k >= 0 ? d.Substring(k + 1) : d; int c = d.IndexOf(":"); if (d.Contains("중단")) d = d.Substring(d.IndexOf("중단")); return d.Length > 24 ? d.Substring(0, 24) : d; }).ToList();
             string W(string id) => id == null ? "-" : Cast.GivenOf(id) ?? id;
@@ -56,6 +66,7 @@ public static partial class Program
         }
         foreach (var r in rows) Console.WriteLine(r.line);
         if (all) Console.WriteLine("all murders: " + string.Join(", ", allMoments.Where(x => x != null).SelectMany(x => x).GroupBy(x => x).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} {g.Count()}")) + $" · total {allMoments.Where(x => x != null).Sum(x => x.Count)}");
+        Console.WriteLine("event designs: " + string.Join(", ", evOutcomes.GroupBy(x => x).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} ×{g.Count()}")));
         Console.WriteLine("designs: " + string.Join(", ", designs.Where(x => x != null).SelectMany(x => x).GroupBy(x => x).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} {g.Count()}")));
         Console.WriteLine("revises: " + string.Join(", ", revises.Where(x => x != null).SelectMany(x => x).GroupBy(x => x).OrderByDescending(g => g.Count()).Take(14).Select(g => $"{g.Key} {g.Count()}")));
         void Count(string title, Func<(ulong seed, string line, string culprit, string moment, string approach, string motive), string> key)

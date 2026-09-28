@@ -108,18 +108,21 @@ namespace BL23.Sim
                     list.Add(new MomentCand { Kind = "hosted", EventKind = hk.Id, Label = hk.Label, Room = room.Id, At = start, End = end, Strike = start - 5, Crowd = true, Dark = hk.Dark, Serve = hk.Serve, VictimIn = !v.IsPlayer && WouldCome(S, v, a), Hosted = true });
                 }
             // 2) an evening they were invited to (someone else's, a festival, an exchange)
-            foreach (var g in S.Gatherings.Where(g => !g.Done && !g.Cancelled && g.Host != a.Id && g.Kind != "house:hunt").OrderBy(g => g.Id, StringComparer.Ordinal))   // the hunt's briefing is not the moment; the search is (2b)
+            foreach (var g in S.Gatherings.Where(g => !g.Done && !g.Cancelled && g.Host != a.Id && g.Kind != "house:hunt" && g.Kind != "house:phone").OrderBy(g => g.Id, StringComparer.Ordinal))   // the hunt's briefing and the telephone night's lounge are not the moment; the search and the call are (2b, 2c)
             {
                 if (!g.Status.TryGetValue(a.Id, out var s0) || !(s0 == "accepted" || s0 == "attended" || s0 == "invited")) continue;
                 var R = g.Cur; if (R.Start < from - 5 || R.Start > now + (HouseEvents.IsHouse(g) ? 720 : 360)) continue;   // the house announces its evening in the morning
                 bool vin = g.Status.TryGetValue(v.Id, out var vs) && (vs == "accepted" || vs == "attended" || vs == "host");
                 bool dark = S.RuleActive("CH03") && S.Rule("CH03").Times.Any(t => t > R.Start + 10 && t < R.End - 10) || HouseEvents.Dark(S, g);   // the house's toast, a dark evening
                 var hk = HouseEvents.KindOf(g);
-                list.Add(new MomentCand { Kind = "joined", Ref = g.Id, Label = g.Label, EventKind = hk != null ? "house:" + hk.Id : null, Room = R.Room, At = R.Start, End = hk != null ? R.Start + hk.Len : R.End, Strike = Math.Max(now + 2, R.Start - 5), Crowd = true, VictimIn = vin, Dark = dark || hk?.Dark != null, DarkBy = dark || hk?.Dark != null ? "house" : null, Serve = hk?.Id == "banquet" });
+                list.Add(new MomentCand { Kind = "joined", Ref = g.Id, Label = g.Label, EventKind = hk != null ? "house:" + hk.Id : null, Room = R.Room, At = R.Start, End = hk != null ? R.Start + hk.Len : R.End, Strike = Math.Max(now + 2, R.Start - 5), Crowd = true, VictimIn = vin, Dark = dark || hk?.Dark != null, DarkBy = dark || hk?.Dark != null ? "house" : null, Serve = hk != null && (hk.Id == "banquet" || hk.Serve) });
             }
             // 2b) the house's treasure hunt: where the victim searches, alone, is public (the chart read out in the morning)
             if (HouseEvents.HuntZone(S, v.Id, out var hz, out var hAt, out var hEnd) && hAt > from - 5 && hEnd - 20 > now)
                 list.Add(new MomentCand { Kind = "hunt", Room = hz, HabitRoom = hz, At = Math.Max(hAt, now + 2), End = hEnd, Strike = Math.Max(hAt + 5, now + 2), Label = "보물찾기 — " + S.RoomName(hz) });
+            // 2c) the house's telephone night: the victim's call — alone in the telephone room, at an hour everyone heard
+            if (HouseEvents.NextCall(S, v.Id, out var pr, out var cAt, out var cg) && cAt > from - 5 && cAt - 4 > now)
+                list.Add(new MomentCand { Kind = "call", Ref = cg.Id, Room = pr, HabitRoom = pr, At = cAt, End = cAt + HouseEvents.CallLen, Strike = Math.Max(cAt - 6, now + 2), Label = "전화의 밤 — " + Cast.GivenOf(v.Id) + "의 통화 차례" });
             // 3) the house's own darkness (CH03: announced times; CH23: the long dark)
             if (S.RuleActive("CH03"))
                 foreach (var t in S.Rule("CH03").Times.OrderBy(x => x)) if (t > from + 40 && t < now + 1440)
@@ -251,7 +254,7 @@ namespace BL23.Sim
                     }
                     else if (wc != null) { var hb = HabitOf(S, a, v); if (hb.room >= 0 && ErrandPref(S.Layout.Room(hb.room).Type) >= 0.6) Add("slip-out", wc, hb.room); }
                     break;
-                case "hunt":
+                case "hunt": case "call":
                     if (w != null) Add("ambush", w, m.HabitRoom);
                     break;
                 case "house-dark": case "long-dark":
@@ -388,6 +391,7 @@ namespace BL23.Sim
             // the house's own evenings are stages it set for exactly this (SocialEventsDesign §4): a chart that says who is alone
             // where, masks that turn every witness's "I saw X" into "I saw a mask", a toast in the dark, a whole evening unlit
             if (m.Kind == "hunt") s += 0.75 + (st.Style == "Practical" || st.Style == "Impulsive" ? 0.15 : 0) + (st.Style == "Meticulous" ? 0.1 : 0);   // alone, for an hour and a half, where everyone was told
+            if (m.Kind == "call") s += 0.7 + (st.Style == "Meticulous" ? 0.2 : 0) + (st.Skill("Timing") || st.Skill("Schedules") ? 0.2 : 0);   // eight minutes, to the minute, read out in the morning
             if (m.EventKind != null && m.EventKind.StartsWith("house:", StringComparison.Ordinal))
             {
                 s += 0.45;
@@ -476,7 +480,7 @@ namespace BL23.Sim
             if (m.Hosted) CreateEvent(sim, sc, a, v, m);
             BuildPrep(sim, sc, a, v, st);
             sc.Log.Add(K($"{ClockFmt.DayHM(S.Clock)} 설계: {MomentText(sc)} — {ApproachText(sc)}" + (sc.Scapegoat != null ? $", 의심은 {Name(sc.Scapegoat)}에게" : "") + "."));
-            S.Log("SchemeDesign", a.Id, v.Id, data: $"{sc.Id} {sc.Shape} strike@{ClockFmt.HM(sc.StrikeAt)} prep={sc.Prep.Count}", secret: true);
+            S.Log("SchemeDesign", a.Id, v.Id, data: $"{sc.Id} {sc.Shape} strike@{ClockFmt.HM(sc.StrikeAt)} prep={sc.Prep.Count}{(sc.EventKind != null && sc.EventKind.StartsWith("house:") ? " ev=" + sc.EventKind.Substring(6) : sc.Moment == "hunt" || sc.Moment == "call" ? " ev=" + sc.Moment : "")}", secret: true);
             S.Dev($"SCHEME-DESIGN {a.Id}->{v.Id} {sc.Shape} at {ClockFmt.DayHM(sc.StrikeAt)} prep={string.Join(",", sc.Prep.Select(p => p.Kind))}");
         }
 
@@ -537,6 +541,12 @@ namespace BL23.Sim
                 && HouseEvents.HuntZoneAt(S, a.Id, sc.StrikeAt, out var hz, out var hAt, out _) && hz != sc.KillRoom
                 && !(HouseEvents.HuntZoneAt(S, v.Id, sc.StrikeAt, out var vz, out _, out _) && vz == hz))
             { sc.Alibi = "zone"; sc.AlibiRoom = hz; sc.AlibiAt = hAt; sc.Var("zone-alibi"); return; }
+            if (sc.Moment == "call")
+            {
+                // "I was in the lounge, waiting for my call, with everyone" — broken by whoever saw them leave it
+                var cg = S.Gatherings.FirstOrDefault(x => x.Id == sc.MomentRef);
+                sc.Alibi = "crowd"; sc.AlibiRoom = cg != null && cg.Revs.Count > 0 ? cg.Cur.Room : -1; sc.EventRoom = sc.AlibiRoom; return;
+            }
             if (sc.Moment == "hosted" || sc.Moment == "joined" || sc.Moment == "meal" || sc.Approach == "dark-strike" || sc.Moment == "house-dark") { sc.Alibi = "crowd"; sc.AlibiRoom = sc.MomentRoom; }
             if (sc.Moment == "investigation") { sc.Alibi = "crowd"; return; }
             if (sc.Alibi == "crowd" && sc.Approach != "errand" && sc.Approach != "slip-out") return;

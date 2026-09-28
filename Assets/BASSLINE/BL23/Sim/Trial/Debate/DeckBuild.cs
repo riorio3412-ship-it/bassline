@@ -47,7 +47,7 @@ namespace BL23.Sim
             var d = new CaseDeck { Incident = inc.Id, Loop = S.Loop, Chapter = S.Chapter, Frozen = S.Clock, FrozenSeq = S.Seq, Source = C.Pack != null ? "pack,legacy" : "legacy" };
             double u = MurderHash.U01(S, "deck-fakes:" + inc.Id); d.FakeTarget = u < 0.25 ? 4 : u < 0.75 ? 5 : 6;
             var cands = new List<Plate>();
-            FeedBody(C, cands); FeedTraces(C, cands); FeedFurniture(C, cands); FeedItems(C, cands); FeedWitness(C, cands); FeedCulpritSeen(C, cands); FeedBeats(C, cands); FeedHunt(C, cands); FeedMasque(C, cands); FeedAlibi(C, cands); FeedCoincidence(C, cands); FeedHeld(C, cands);
+            FeedBody(C, cands); FeedTraces(C, cands); FeedFurniture(C, cands); FeedItems(C, cands); FeedWitness(C, cands); FeedCulpritSeen(C, cands); FeedBeats(C, cands); FeedHunt(C, cands); FeedMasque(C, cands); FeedCalls(C, cands); FeedAlibi(C, cands); FeedCoincidence(C, cands); FeedHeld(C, cands);
             BuildClaims(C, d, cands);
             LinkPlates(C, d, cands);
             Select(C, d, cands);
@@ -408,6 +408,27 @@ namespace BL23.Sim
                 p.Back = LineBank.FixParticles($"키가 비슷했을 뿐 — {G(guess)}은(는) 그때 가면을 쓴 채 {S.RoomName(g.Cur.Room)}에 있었다.");
                 cands.Add(p); return;
             }
+        }
+
+        // ---- the telephone night (HouseEvents): the call order the house read out in the morning (everyone knew who would be alone
+        //      in the telephone room, and when), and the house's log — a call nobody picked up is a minute by which the victim
+        //      was already down, or not where they should have been
+        static void FeedCalls(CaseFacts C, List<Plate> cands)
+        {
+            var S = C.S; var g = HouseEvents.CallsAt(S, C.KillClock); if (g == null) return;
+            var order = g.Status.Keys.Select(x => (x, t: HouseEvents.CallSlot(S, g, x))).Where(x => x.t >= 0).OrderBy(x => x.t).ThenBy(x => x.x, StringComparer.Ordinal).ToList();
+            if (order.Count == 0) return;
+            int pr = S.Layout.Rooms.Where(r => r.Type == RoomType.PhoneRoom).OrderBy(r => r.Id).Select(r => r.Id).DefaultIfEmpty(-1).First();
+            double Slot(LedgerEvent e) { int i = e.Data?.IndexOf(':') ?? -1; return i >= 0 && double.TryParse(e.Data.Substring(i + 1), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : e.Clock - 3; }
+            var missed = S.Ledger.Where(e => e.Type == "PhoneNoAnswer" && e.Data != null && e.Data.StartsWith(g.Id + ":", StringComparison.Ordinal)).OrderBy(e => e.Clock).ToList();
+            int vi = order.FindIndex(x => x.x == C.VictimId);
+            var shown = (vi >= 0 ? order.Skip(Math.Max(0, vi - 2)).Take(5) : order.Take(5)).ToList();
+            string Line((string x, double t) c) => $"{ClockFmt.Mark(c.t, false)} {G(c.x)}" + (missed.Any(e => e.Target == c.x) ? "(응답 없음)" : "");
+            var p = NewPlate(C, "record:calls:" + g.Id, PlateKind.Record, PlateRole.Confirm, true, "전화의 밤 순서표", string.Join(" · ", shown.Select(Line)), pr, order[0].t, order[order.Count - 1].t + HouseEvents.CallLen, null);
+            var vm = missed.FirstOrDefault(e => e.Target == C.VictimId);
+            p.Back = vm != null ? LineBank.FixParticles($"{ClockFmt.Mark(Slot(vm), true)}, {G(C.VictimId)}의 차례에 전화를 받는 사람이 없었다 — 그때 이미 쓰러져 있었거나, 전화실에 오지 못했다.")
+                                : "순서는 아침에 모두가 들었다. 누가 언제 전화실에 혼자 있을지, 저택 안의 모두가 알았다.";
+            cands.Add(p);
         }
 
         // ---- the culprit's alibi as recorded (FalseAlibi, the boss fake): a true sighting that reads as "elsewhere at the time"

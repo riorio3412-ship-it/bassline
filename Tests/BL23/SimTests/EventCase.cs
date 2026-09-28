@@ -7,7 +7,7 @@ using BL23.Sim;
 /// eventcase &lt;from&gt; &lt;to&gt; [days] [kind] — the 심판 of a murder staged at one of the house's evenings (HouseEvents), played
 /// headless the way "debate" plays the first one. Seeds run with 민혁 active (the premise lab's player); every court opens
 /// as a debate, and the ones for other murders are settled headless. The first case whose scheme used a house evening
-/// (kind: masque · banquet · hunt · stars · vigil, or any) is printed — the deck, then the transcript and the verdict.
+/// (kind: masque · banquet · hunt · stars · vigil · puppet · aquarium · contract · phone, or any) is printed — the deck, then the transcript and the verdict.
 /// </summary>
 public static partial class Program
 {
@@ -67,11 +67,13 @@ public static partial class Program
         return 1;
     }
 
-    /// <summary>The house evening a murder's scheme used (masque · banquet · hunt · stars · vigil), or null.</summary>
+    /// <summary>The house evening a murder's scheme used (masque · banquet · hunt · stars · vigil · puppet · aquarium · contract ·
+    /// phone), or null.</summary>
     static string HouseKindOf(GameState S, Scheme sc, Incident inc)
     {
         if (sc == null) return null;
         if (sc.Moment == "hunt") return "hunt";
+        if (sc.Moment == "call") return "phone";
         string ek = sc.EventKind ?? (sc.MomentRef != null ? S.Gatherings.FirstOrDefault(g => g.Id == sc.MomentRef)?.Kind : null);
         return ek != null && ek.StartsWith("house:", StringComparison.Ordinal) ? ek.Substring(6) : null;
     }
