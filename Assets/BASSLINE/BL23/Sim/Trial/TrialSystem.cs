@@ -40,10 +40,15 @@ namespace BL23.Sim
         public TrialGame Game; public List<string> GameLog = new List<string>(); public int GameBeats; public int Inquiries, Ledgers, Boards, Questions;
         public string FinalStep; public int PanicScore, PanicMax; public List<TrialSystem.RQ> RQ = new List<TrialSystem.RQ>();
         public int Streak, Hourglass; public List<string> Withheld = new List<string>();
+        // the debate 심판 (Sim/Trial/Debate, TrialReforge.md): null = this trial runs the old engine (and old saves stay byte-identical)
+        public DebateState Debate;
     }
 
     public static partial class TrialSystem
     {
+        /// <summary>Start new 심판s as a debate (Sim/Trial/Debate). Read only in Begin: a trial keeps the engine it began with.</summary>
+        public static bool DebateEnabled;
+
         // ------------------------------------------------------------------ start
         public static void Begin(Simulation sim)
         {
