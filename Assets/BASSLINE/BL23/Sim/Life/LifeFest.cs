@@ -110,7 +110,7 @@ namespace BL23.Sim
         LifeStage FestOffer()
         {
             var me = S.Player;
-            foreach (var g in (S.Gatherings ?? new List<Gathering>()).Where(g => g.Kind != null && (g.Kind.StartsWith("fest:") || g.Kind == "memorial" || HouseEvents.IsHouse(g)) && !g.Done && !g.Cancelled))
+            foreach (var g in (S.Gatherings ?? new List<Gathering>()).Where(g => g.Kind != null && (g.Kind.StartsWith("fest:") || g.Kind == "memorial" || HouseEvents.IsHouse(g) || Grammars.IsResidentKind(g.Kind)) && !g.Done && !g.Cancelled))
             {
                 if (g.Cur.Room != me.Room || S.Clock < g.Cur.Start - 5 || S.Clock > g.Cur.End - (HouseEvents.IsHouse(g) ? 2 : 10)) continue;
                 if (S.Flags.ContainsKey("lfestseen:" + g.Id)) continue;
@@ -162,6 +162,8 @@ namespace BL23.Sim
                 case "fest:bar": FestBar(sc, run, g.Host, others, withPlayer); break;
                 case "house:banquet": case "house:masque": case "house:hunt": case "house:stars": case "house:vigil":
                     HouseEventScene(sc, run, g, present, withPlayer); break;
+                case "tea": case "cards": case "music": case "reading": case "party": case "show": case "film":
+                    GatherScene(sc, run, g, present, withPlayer); break;
                 case "memorial":
                     {
                         string v = S.Flags.TryGetValue("lmemv:" + g.Id, out var vn) ? "P" + ((int)vn).ToString("00", CultureInfo.InvariantCulture) : LifeLastDeath()?.Victim;

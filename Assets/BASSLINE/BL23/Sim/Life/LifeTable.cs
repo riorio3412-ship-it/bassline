@@ -112,8 +112,8 @@ namespace BL23.Sim
                          ?? diners.Where(d => !f.Members.Contains(d)).OrderBy(d => f.Members.Average(m => Factions.Affinity(S, d, m))).ThenBy(d => d, StringComparer.Ordinal).FirstOrDefault();
                 if (o != null && diners.Count >= 3) { found.Add(("faction", f.Id, o)); break; }
             }
-            // 7 event: a festival today that hasn't started, its host at the table
-            var fest = S.Gatherings.Where(g => g.Kind != null && g.Kind.StartsWith("fest:") && !g.Done && !g.Cancelled && g.Revs.Count > 0 && (int)(g.Cur.Start / 1440) + 1 == S.Day && g.Cur.Start > S.Clock).OrderBy(g => g.Cur.Start).FirstOrDefault();
+            // 7 event: a festival — or an evening a resident thought up themselves — today, not started, its host at the table
+            var fest = S.Gatherings.Where(g => g.Kind != null && (g.Kind.StartsWith("fest:") || Grammars.IsResidentKind(g.Kind)) && diners.Contains(g.Host) && !S.Flags.ContainsKey("ltevent:" + g.Id) && !g.Done && !g.Cancelled && g.Revs.Count > 0 && (int)(g.Cur.Start / 1440) + 1 == S.Day && g.Cur.Start > S.Clock).OrderBy(g => g.Cur.Start).FirstOrDefault();
             if (fest != null && diners.Contains(fest.Host) && !S.Flags.ContainsKey("ltevent:" + fest.Id)) found.Add(("event", fest.Id, fest.Host));
             // 8 absent: a living resident who didn't come (breakfast/dinner), 서윤 counts heads
             if (meal != "lunch")
@@ -216,8 +216,18 @@ namespace BL23.Sim
                 var why = HouseEvents.NoReason(S, who, hg.Id);
                 return why == "fear" ? "tt_hev_no_fear" : why == "enemy" ? "tt_hev_no_enemy" : why == "lead" ? "tt_hev_no_lead" : why == "crowd" ? "tt_hev_no_crowd" : "tt_hev_no";
             }
+            var eg = kind == "event" ? S.Gatherings.FirstOrDefault(x => x.Id == subject) : null;
+            string EventKey(string who)
+            {
+                if (eg == null || !Grammars.IsResidentKind(eg.Kind)) return reKey;
+                if (!eg.Status.TryGetValue(who, out var st)) return "tt_event_out";
+                return st == "declined" ? "gathering_no" : "gathering_yes";
+            }
             if (kind == "hev") reactors = diners.Where(d => d != owner).OrderByDescending(d => hg != null && hg.Status.TryGetValue(d, out var st) && st == "declined" ? 1 : 0).ThenBy(d => MurderHash.U01(S, "hevtab:" + subject + ":" + d)).ThenBy(d => d, StringComparer.Ordinal).Take(4).ToList();
-            foreach (var r in reactors) beat.Lines.Add(KeyLine(r, owner, kind == "faction" ? (Inside(r) ? "tt_faction_in" : "tt_faction_out") : kind == "hev" ? HevKey(r) : reKey, kind == "push" ? Emotion.Fear : Emotion.Neutral));
+            foreach (var r in reactors) beat.Lines.Add(KeyLine(r, owner, kind == "faction" ? (Inside(r) ? "tt_faction_in" : "tt_faction_out") : kind == "hev" ? HevKey(r) : kind == "event" ? EventKey(r) : reKey, kind == "push" ? Emotion.Fear : Emotion.Neutral));
+            // left off the list, and told so at the table: a small hurt toward the host
+            if (eg != null && Grammars.IsResidentKind(eg.Kind))
+                foreach (var r in reactors.Where(r => !eg.Status.ContainsKey(r) && S.HasRel(r, owner) && S.R(r, owner).Like > 0.05f)) Relations.Change(S, r, owner, like: -0.01f, jealous: 0.02f, memory: "모임에 나만 안 불렀다");
             beat.Lines.RemoveAll(l => l == null);
             if (withPlayer) foreach (var o in TableOptions(kind, owner, a, b, diners, run)) beat.Opts.Add(o);
             // bookkeeping: this meal has had its topic

@@ -213,6 +213,22 @@ namespace BL23.Sim
             }
         }
 
+        /// <summary>An evening a resident thought up (Grammars): the host opens, the guests talk, 민혁 may say one thing.</summary>
+        void GatherScene(GenScene sc, SceneRun run, Gathering g, List<string> present, bool withPlayer)
+        {
+            string host = g.Host; var guests = present.Where(x => x != host).OrderBy(x => MurderHash.U01(S, "gseat:" + g.Id + ":" + x)).ThenBy(x => x, StringComparer.Ordinal).Take(3).ToList();
+            sc.Open(FK(host, "gath_open_" + g.Kind, withPlayer ? Cast.Player : guests.FirstOrDefault(), Emotion.Smile));
+            for (int i = 0; i < guests.Count; i++) sc.First.Lines.Add(FK(guests[i], "gathering_chat", i == 0 ? host : guests[i - 1], Emotion.Smile));
+            if (!withPlayer) return;
+            // the one standing off to the side (lowest ties to the rest)
+            string lone = guests.OrderBy(x => guests.Where(y => y != x).Select(y => Factions.Affinity(S, x, y)).DefaultIfEmpty(0).Average()).ThenBy(x => x, StringComparer.Ordinal).FirstOrDefault();
+            if (lone != null) run.Ctx["t"] = lone;
+            var beat = sc.First;
+            beat.Opts.Add(FO("초대해 줘서 고마워요.", FK(host, "gathering_yes", Cast.Player, Emotion.Smile)).Do(FFx(host, "me", like: 0.04f, attach: 0.01f, mem: "모임에 와 줬다")));
+            if (lone != null) beat.Opts.Add(FO("{t} 씨, 이쪽으로 와서 같이 해요.", FK(lone, "gathering_yes", Cast.Player, Emotion.Smile)).Do(FFx(lone, "me", like: 0.04f, trust: 0.02f, mem: "모임에서 나를 끌어 줬다"), FFx(host, "me", like: 0.01f)));
+            beat.Opts.Add(FO("조용히 구석에 앉는다").Act());
+        }
+
         static bool HuntRoom(RoomType t) => t == RoomType.Library || t == RoomType.Archive || t == RoomType.Storage || t == RoomType.Gallery || t == RoomType.ClockMuseum
             || t == RoomType.WineCellar || t == RoomType.Study || t == RoomType.Workshop || t == RoomType.TrophyRoom || t == RoomType.DollRoom || t == RoomType.MirrorWater
             || t == RoomType.MusicRoom || t == RoomType.Wardrobe || t == RoomType.Greenhouse;

@@ -363,6 +363,9 @@ namespace BL23.Sim
             ("film", "상영회", new[] { RoomType.Theater, RoomType.Lounge }, "film"),
         };
 
+        /// <summary>A gathering a resident thought up themselves (tea, cards, music, reading, a party, a show, a film).</summary>
+        public static bool IsResidentKind(string kind) => kind != null && Kinds.Any(k => k.kind == kind);
+
         static void Host(Simulation sim, Rng rng)
         {
             var S = sim.S;

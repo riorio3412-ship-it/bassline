@@ -237,6 +237,48 @@ namespace BL23.Sim
             VC("ANY", "tt_hev_no", "…난 오늘은 쉴래.");
             VP("P18", "tt_hev_no", "허. 오늘은 쉬겠습니다. 몸이 셈을 못 따라갑니다.");
             VC("P08", "tt_hev_no", "…됐고, 오늘은 잘래.");
+
+            // ═════════ 주민 모임 (Grammars) — the host opens their own evening ═════════
+            VP("ANY", "gath_open_tea", "차 우렸어요. 식기 전에 드세요. 오늘은 무서운 얘기 빼고요.");
+            VC("ANY", "gath_open_tea", "차 우렸어. 식기 전에 마셔. 오늘은 무서운 얘기 빼고.");
+            VP("P10", "gath_open_tea", "우선 앉아요. 차는 제가 따를게요. 과자도 구웠어요. 허허.");
+            VP("P14", "gath_open_tea", "차를 준비했습니다. 따뜻할 때 드십시오. 후후.");
+            VP("ANY", "gath_open_cards", "카드 섞을게요. 오늘은 돈 말고 과자 걸고 해요.");
+            VC("ANY", "gath_open_cards", "카드 섞는다. 오늘은 과자 걸고 하자.");
+            VC("P02", "gath_open_cards", "자, 한 판. 거는 건 과자, 보는 건 표정. 큭.");
+            VC("P13", "gath_open_cards", "한 판 붙자. 봐주는 거 없다. GG 칠 준비 해.");
+            VP("ANY", "gath_open_music", "몇 곡 준비했어요. 틀려도 박수는 쳐 주세요.");
+            VC("ANY", "gath_open_music", "몇 곡 준비했어. 틀려도 박수 쳐.");
+            VC("P09", "gath_open_music", "{you:아}, 오늘은 조명 대신 촛불이야. 첫 곡 간다.");
+            VP("P12", "gath_open_music", "오늘도 반짝! 작은 무대지만 진심이에요.");
+            VP("ANY", "gath_open_reading", "오늘 읽을 책이에요. 한 장씩 돌아가며 읽어요.");
+            VC("ANY", "gath_open_reading", "오늘 읽을 책. 한 장씩 돌아가며 읽자.");
+            VP("P15", "gath_open_reading", "원문 그대로 읽을게요. 틀리면 정정해 주세요.");
+            VP("P03", "gath_open_reading", "정리하면, 한 사람에 한 쪽씩이에요. 순서는 제가 정할게요.");
+            VP("ANY", "gath_open_party", "작은 파티예요. 오늘만큼은 저택 생각 하지 마요.");
+            VC("ANY", "gath_open_party", "작은 파티야. 오늘만큼은 저택 생각 하지 마.");
+            VC("P07", "gath_open_party", "크하하, 파티다! 오늘은 내 플레이리스트야. 불만은 안 받는다.");
+            VC("P17", "gath_open_party", "짜잔! 파티 시작! 규칙은 하나, 우울한 얼굴 금지!");
+            VP("ANY", "gath_open_show", "준비한 걸 보여 드릴게요. 끝까지 봐 주세요.");
+            VC("ANY", "gath_open_show", "준비한 거 보여 줄게. 끝까지 봐.");
+            VC("P09", "gath_open_show", "막 올린다. {you:아}, 맨 앞자리 비워 뒀어.");
+            VP("ANY", "gath_open_film", "영사기 돌릴게요. 불 끕니다. 무서운 건 아니에요.");
+            VC("ANY", "gath_open_film", "영사기 돌린다. 불 끈다. 무서운 건 아니야.");
+            VC("P08", "gath_open_film", "…불 끌게. 소리는 내가 맞췄어. 조용히 봐.");
+
+            // ═════════ 모임 — the ones not asked, told so at the table ═════════
+            VC("P02", "tt_event_out", "흐응, 나는 안 불렀네? 괜찮아. 표정 구경은 여기서도 되니까.");
+            VC("P07", "tt_event_out", "야, 나 빼고 {act}? 레알 서운하다.");
+            VP("P12", "tt_event_out", "어… 저는 초대 못 받았네요. 에헤헤, 괜찮아요.");
+            VC("P13", "tt_event_out", "솔직히 안 불러 준 건 좀 짜증 나.");
+            VC("P08", "tt_event_out", "아 뭐, 안 불러도 돼. 안 갈 거였어.");
+            VC("P09", "tt_event_out", "{you:아}… 나도 끼면 안 될까? 아, 아니야.");
+            VC("P17", "tt_event_out", "있지있지, 나는 초대장 못 받았어! 판정합니다, 반칙!");
+            VC("P16", "tt_event_out", "풋. 나 빼고 하는구나. 별로.");
+            VP("P05", "tt_event_out", "자, 자. 초대 명단이란 게 원래 정치죠. 하하하.");
+            VP("P06", "tt_event_out", "흠. 명단에서 빠졌군요. 셈은 해 두겠습니다.");
+            VP("ANY", "tt_event_out", "…저는 초대 못 받았네요.");
+            VC("ANY", "tt_event_out", "…난 초대 못 받았네.");
         }
     }
 }

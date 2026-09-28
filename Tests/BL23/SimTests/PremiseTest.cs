@@ -91,14 +91,15 @@ public static partial class Program
             // 민혁 goes to the house's evening (HouseEvents) a few minutes in, and the festival stage plays
             if (S.Phase == Phase.Daily && S.Player != null && S.Player.Alive)
             {
-                var hg = S.Gatherings.FirstOrDefault(g => HouseEvents.IsHouse(g) && !g.Cancelled && S.Clock >= g.Cur.Start + 3 && S.Clock <= g.Cur.Start + 20 && !S.Flags.ContainsKey("ptsaw:" + g.Id));
-                if (hg != null && (S.Clock >= g0(hg) + 19 || S.LivingNpcs.Count(x => x.Room == hg.Cur.Room) >= 4))
+                var hg = S.Gatherings.FirstOrDefault(g => (HouseEvents.IsHouse(g) || Grammars.IsResidentKind(g.Kind)) && !g.Cancelled && S.Clock >= g.Cur.Start + 3 && S.Clock <= g.Cur.Start + 20 && !S.Flags.ContainsKey("ptsaw:" + g.Id));
+                int need = HouseEvents.IsHouse(hg ?? new Gathering()) ? 4 : 2;
+                if (hg != null && (S.Clock >= g0(hg) + 19 || (hg.Kind == "house:hunt" && S.Clock >= g0(hg) + 4) || S.LivingNpcs.Count(x => x.Room == hg.Cur.Room && hg.Status.ContainsKey(x.Id)) >= need))
                 {
                     S.Flags["ptsaw:" + hg.Id] = 1;
                     var room = S.Layout.Room(hg.Cur.Room); var pos = sim.RandomPointIn(room, S.R(Stream.Presentation)); sim.SetPlayerPose(pos, 0, false, false);
-                    var going = hg.Status.Where(kv => kv.Value == "accepted" || kv.Value == "attended" || kv.Value == "late").Select(kv => Who(kv.Key));
+                    var going = hg.Status.Where(kv => kv.Value == "accepted" || kv.Value == "attended" || kv.Value == "late" || kv.Value == "host").Select(kv => Who(kv.Key));
                     var no = hg.Status.Where(kv => kv.Value == "declined").Select(kv => Who(kv.Key));
-                    Console.WriteLine($"   [{ClockFmt.DayHM(S.Clock)}] 저택 행사 「{hg.Label}」 @{room.Name} · 온다: {string.Join(",", going)} · 안 온다: {string.Join(",", no)}");
+                    Console.WriteLine($"   [{ClockFmt.DayHM(S.Clock)}] {(HouseEvents.IsHouse(hg) ? "저택 행사" : Who(hg.Host) + "의 모임")} 「{hg.Label}」 @{room.Name} · 온다: {string.Join(",", going)} · 안 온다: {string.Join(",", no)}");
                     var st = sim.LifeOffer(); if (st != null) Print(st); else Console.WriteLine("      (장면 없음 — 아직 사람이 덜 모였다)");
                 }
             }

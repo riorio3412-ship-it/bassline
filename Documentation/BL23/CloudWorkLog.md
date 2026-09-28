@@ -223,3 +223,8 @@ dotnet run -c Release -- voice lint out.txt       # 보이스 팩 위반 0
   - 측정: 첫 살인이 가면의 밤이나 보물찾기 도중에 난다. 행사가 살인의 무대가 된다.
   - 파일: `Sim/Life/HouseEvents.cs`, `Lines_Social.cs`, `LifeFest`, `LifeTable`, `Grammars`(저택 행사는 수정 없음), `InitiativeDesign`(`hunt`, 행사 어둠).
   - 남은 것(4단계): 법정에 보물찾기 구역표와 가면 목격 은판이 없다. 그래서 보물찾기 살인 한 건(시드 20260926)이 오판이 났다.
+- 2026-09-28: **SocialEventsDesign §6 3단계 — 주민 모임 장면.**
+  - 주민이 연 모임(차·카드·연주·낭독·파티·발표·상영)에 민혁이 가면 장면이 열린다. 주최자의 여는 말과 손님들의 말이 나오고, 민혁은 한마디 하거나 겉도는 사람을 끌어줄 수 있다.
+  - 식탁 「오늘의 모임」에서 초대받은 사람은 수락·거절을 말하고, 초대받지 못한 사람은 서운해한다(주최자에게 질투 +).
+  - 초대가 늦게 닿아 손님이 못 오는 경우가 많다. 기존 IG02 설계대로다.
+  - 파일: `HouseEvents.GatherScene`, `LifeTable`(`tt_event_out`), `Grammars.IsResidentKind`, `Lines_Social.cs`(`gath_open_*`).
