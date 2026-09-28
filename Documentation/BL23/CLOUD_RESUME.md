@@ -41,6 +41,7 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
 - 4단계(심판 연결)도 끝났다: 보물찾기 구역 알리바이·은판, 가면의 밤 은판, 파벌 항의.
 - 5단계: 새 방 10종과 방 배경 카드(`Game/UI/RoomCardUI.cs`)까지 했다. 그림 파일 이름표는 SocialEventsDesign §5.
 - 덱 개선으로 심판 정답률(40시드) 87.5%.
+- 수사·심판 공정성(D-061, D-062): 범인의 거짓말마다 깨는 은판이 덱에 있다(40시드 97.5%). 가만히 있으면 이기지 못한다(16시드 중 3건).
 - 첫 살인 다양화(저택의 편지)와 결정성 버그 수정도 했다. 측정 도구는 `firsts`, `staticcheck` 모드다.
 - 자세한 진행은 `CloudWorkLog.md` "기록"의 마지막 줄들을 본다.
 
@@ -95,6 +96,7 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
     'Assets/BASSLINE/BL23/Game/World/WorldPresenter.cs',
     'Assets/BASSLINE/BL23/Sim/Content/Activities.cs',
     'Assets/BASSLINE/BL23/Sim/Content/LineBank.cs',
+    'Assets/BASSLINE/BL23/Sim/Content/Lines_ANY.cs',
     'Assets/BASSLINE/BL23/Sim/Content/Lines_Debate.cs',
     'Assets/BASSLINE/BL23/Sim/Content/Lines_Debate.cs.meta',
     'Assets/BASSLINE/BL23/Sim/Content/Lines_NPC00.cs',
@@ -102,6 +104,7 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
     'Assets/BASSLINE/BL23/Sim/Content/Lines_Premise.cs.meta',
     'Assets/BASSLINE/BL23/Sim/Content/Lines_Social.cs',
     'Assets/BASSLINE/BL23/Sim/Content/Lines_Social.cs.meta',
+    'Assets/BASSLINE/BL23/Sim/Content/Voice/Voice_P06.cs',
     'Assets/BASSLINE/BL23/Sim/Content/Voice/Voice_Traits.cs',
     'Assets/BASSLINE/BL23/Sim/Content/Voice/Voice_Traits.cs.meta',
     'Assets/BASSLINE/BL23/Sim/Data/Cast.cs',
@@ -141,6 +144,7 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
     'Assets/BASSLINE/BL23/Sim/Systems/Relations.cs',
     'Assets/BASSLINE/BL23/Sim/Systems/Rules.cs',
     'Assets/BASSLINE/BL23/Sim/Systems/Simulation.cs',
+    'Assets/BASSLINE/BL23/Sim/Systems/Testimony.cs',
     'Assets/BASSLINE/BL23/Sim/Systems/Tricks.cs',
     'Assets/BASSLINE/BL23/Sim/Trial/Debate/DebateCulprit.cs',
     'Assets/BASSLINE/BL23/Sim/Trial/Debate/DebateCulprit.cs.meta',
@@ -156,6 +160,7 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
     'Assets/BASSLINE/BL23/Sim/Trial/Debate/DebateTheories.cs.meta',
     'Assets/BASSLINE/BL23/Sim/Trial/Debate/DeckBuild.cs',
     'Assets/BASSLINE/BL23/Sim/Trial/Debate/DeckBuild.cs.meta',
+    'Assets/BASSLINE/BL23/Sim/Trial/Logic.cs',
     'Assets/BASSLINE/BL23/Sim/Trial/Settlements.cs',
     'Assets/BASSLINE/BL23/Sim/Trial/TrialGames.cs',
     'Assets/BASSLINE/BL23/Sim/Trial/TrialSystem.cs',

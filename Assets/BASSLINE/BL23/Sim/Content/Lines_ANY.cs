@@ -85,6 +85,7 @@ namespace BL23.Sim
             Add(A, "saw_person", P("{time}쯤 {place}에서 {t:을} 봤어요."), C("{time}쯤 {place}에서 {t:을} 봤어."));
             Add(A, "saw_person_unsure", P("{time}쯤 {place}에 누군가 있었어요. 누군지는 모르겠어요."), C("{time}쯤 {place}에 누가 있었어. 누군지는 모르겠어."));
             Add(A, "saw_item", P("{t:이} {place}에서 {item:을} 들고 있었어요."), C("{t:이} {place}에서 {item:을} 들고 있었어."));
+            Add(A, "saw_beat", P("{time}쯤 {place}에서 본 게 있어요.|「{fragment}」 — 그땐 별일 아닌 줄 알았어요."), C("{time}쯤 {place}에서 본 게 있어.|「{fragment}」 — 그땐 별일 아닌 줄 알았어."));
             Add(A, "heard_sound", P("{time}쯤 {place} 쪽에서 {sound} 소리를 들었어요."), C("{time}쯤 {place} 쪽에서 {sound} 소리를 들었어."));
             Add(A, "saw_nothing", P("아무것도 못 봤어요."), C("아무것도 못 봤어."));
             Add(A, "refuse_answer", P("그건 말하고 싶지 않아요."), C("그건 말하기 싫어."));

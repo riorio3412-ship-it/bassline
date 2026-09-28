@@ -113,7 +113,7 @@ namespace BL23.Sim
                         if ((e.Kind == PropKind.AtPlace || e.Kind == PropKind.WithPerson) && e.A == x && e.Value == "window-cover") { v.Result = Hit(LogicResult.Contradict); v.Rule = "LR03"; v.Why = $"숨진 것으로 보이는 시간 내내 {Cast.GivenOf(x)}은(는) {S.RoomName(e.Room)}에 있었다{hearsay}"; return v; }
                         if (e.Kind == PropKind.Held && e.A == x && ItemCatalog.Get(e.Item)?.IsWeapon == true) { v.Result = LogicResult.Support; v.Rule = "LR04"; v.Why = "흉기가 될 만한 물건을 갖고 있었다 (갖고 있었다고 해서 썼다는 뜻은 아니다)"; return v; }
                         if (e.Kind == PropKind.Bloodied && e.A == x) { v.Result = LogicResult.Support; v.Rule = "LR07"; v.Why = "옷에 피가 묻어 있었다 (다친 사람을 돕다가 묻었을 수도 있다)"; return v; }
-                        if (e.Kind == PropKind.AtPlace && e.A == x && e.Room >= 0) { v.Result = LogicResult.Support; v.Rule = "LR01"; v.Why = "그 무렵 현장 가까이에 있었다"; return v; }
+                        if (e.Kind == PropKind.AtPlace && e.A == x && e.Room >= 0 && e.Value != "elsewhere") { v.Result = LogicResult.Support; v.Rule = "LR01"; v.Why = "그 무렵 현장 가까이에 있었다"; return v; }
                         if (e.Kind == PropKind.Lie && e.A == x) { v.Result = LogicResult.LimitScope; v.Rule = "LR06"; v.Why = "거짓말은 드러났지만, 그것만으로 죽였다고 할 수는 없다"; return v; }
                         if (e.Kind == PropKind.Injured && e.A == x) { v.Result = LogicResult.Support; v.Rule = "LR07"; v.Why = "피해자가 저항하다 낸 상처일 수 있다"; return v; }
                         if (e.Kind == PropKind.Loaned && e.B == x && e.Value != null && e.Value.StartsWith("courier:")) { v.Result = LogicResult.Support; v.Rule = "LR05"; v.Why = $"{Cast.GivenOf(x)}이(가) 피해자를 불러낸 쪽지를 {Cast.GivenOf(e.A)}에게 맡겼다 (전한 사람은 내용을 몰랐다)"; return v; }

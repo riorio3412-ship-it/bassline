@@ -124,6 +124,19 @@ namespace BL23.Sim
                 else { a.Key = "saw_person"; a.Slots["t"] = "@" + s.Target; a.Slots["place"] = S.RoomName(s.Room); a.Slots["time"] = ClockFmt.Vague(s.T0); a.Prop = new Prop { Kind = PropKind.AtPlace, A = s.Target, Room = s.Room, T0 = s.T0, T1 = s.T1, Value = "root:" + s.Root }; }
                 res.Add(a);
             }
+            // preparations they watched the culprit make (the scheme's beats: a cup filled by the host's own hand, a knife taken
+            // from the kitchen, a note slipped under a door) — nothing then, telling now; only for the case being asked about
+            if (S.Mur != null)
+                foreach (var f in k.Facts.Where(f => f.StartsWith("beat:", StringComparison.Ordinal)).OrderBy(f => f, StringComparer.Ordinal).ToList())
+                {
+                    if (res.Count >= max + 1) break;
+                    var b = S.Mur.Beats.FirstOrDefault(x => x.Id == f.Substring(5));
+                    if (b == null || b.Loop != S.Loop || b.Actor == npc.Id || string.IsNullOrEmpty(b.Text) || protectees.Contains(b.Actor)) continue;
+                    var sc = Initiative.SchemeById(S, b.Scheme);
+                    if (sc == null || sc.Killed < 0 || !S.Incidents.Values.Any(i => i.Loop == S.Loop && i.Chapter == S.Chapter && i.Confirmed && i.Victim == sc.Victim)) continue;
+                    res.Add(new Answer { Key = "saw_beat", Slots = { { "fragment", b.Text }, { "time", ClockFmt.Vague(b.Clock) }, { "place", S.RoomName(b.Room) } },
+                        Prop = new Prop { Kind = PropKind.AtPlace, A = b.Actor, Room = b.Room, T0 = b.Clock, T1 = b.Clock, Value = "root:beat:" + b.Id } });
+                }
             // IG10: a go-between who carried the luring note — confesses only to someone they trust (or if very honest)
             foreach (var inc in S.Incidents.Values.Where(i => i.Loop == S.Loop && i.Chapter == S.Chapter && i.Confirmed))
             {

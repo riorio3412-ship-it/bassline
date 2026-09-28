@@ -90,7 +90,16 @@ namespace BL23.Sim
             // list is where the truth hides, not something a plate says out loud (the pack reads the ledger; the court may not).
             var lie = D.Lies.FirstOrDefault(l => l.Id == lieId); if (lie == null || !P.True) return false;
             foreach (var b in lie.BrokenBy)
-                if (b.StartsWith("witness:") && P.Kind == PlateKind.Witness && P.Witness == b.Substring(8) && P.Seen == D.Target) return true;
+            {
+                if (b.StartsWith("witness:") && P.Kind == PlateKind.Witness && P.Witness == b.Substring(8))
+                {
+                    if (P.Seen == D.Target) return true;
+                    // the culprit's false sighting of the scapegoat: this witness had the scapegoat somewhere else around then
+                    if (lie.Topic == "saw" && P.Seen != null && P.Seen == D.Scapegoat && P.Room >= 0 && P.Room != D.KillRoom && P.T0 >= 0 && Math.Abs(P.T0 - D.KillClock) < 20) return true;
+                }
+                // a preparation someone saw (the deck's beat plates carry the beat as their root)
+                if (b.StartsWith("beat:") && P.Root == b) return true;
+            }
             return false;
         }
 
@@ -175,7 +184,7 @@ namespace BL23.Sim
             var slots = new Dictionary<string, string> { { "holder", "@" + th?.Holder }, { "plate", $"은판 {P?.N}, 「{P?.Title}」" } };
             bool lands = ev.Outcome == "collapse" || ev.Outcome == "seal";
             if (player) DSay(sim, T, Cast.Player, "p_show", slots, BeatKind.Line, lands && ev.Outcome == "collapse" ? "p_object" : "p_show", th?.TrialClaim, lands ? Emotion.Angry : Emotion.Neutral, Anim.Present, lands ? 0.7f : 0.5f, th?.Id, P?.Id);
-            else DSay(sim, T, by, "npc_show", slots, BeatKind.Line, "object", th?.TrialClaim, Emotion.Angry, Anim.Present, 0.6f, th?.Id, P?.Id);
+            else DSay(sim, T, by, th != null && th.Holder == by ? "npc_show_own" : "npc_show", slots, BeatKind.Line, "object", th?.TrialClaim, Emotion.Angry, Anim.Present, 0.6f, th?.Id, P?.Id);
             if (P != null && P.State != PlateState.Flipped && P.State != PlateState.Sealed) P.State = PlateState.Shown;
             if (P != null) P.History.Add($"{by}>{th?.Id}:{ev.Outcome}");
             switch (ev.Outcome)
@@ -257,12 +266,18 @@ namespace BL23.Sim
         }
 
         /// <summary>A floor that keeps missing does not idle (§6.11): a hint after two misses, the plate after four, and at six
-        /// the resident best placed lays it themselves.</summary>
+        /// the resident best placed lays it themselves. The culprit's own story nobody lays for 민혁 (NpcResolves): after eight
+        /// misses on it the court moves on and the riddle stays open, as when he lets the floor pass.</summary>
         static void Stuck(Simulation sim, TrialState T, Mystery m)
         {
             if (m.Misses == 2) Hint(sim, T, m, 1);
             else if (m.Misses == 4) Hint(sim, T, m, 2);
-            else if (m.Misses >= 6) { if (!FloorRequest(sim, T, m)) NpcResolves(sim, T, m); else if (m.Misses >= 7) NpcResolves(sim, T, m); }
+            else if (m.Misses >= 6)
+            {
+                bool acted = FloorRequest(sim, T, m);
+                if (!acted || m.Misses >= 7) acted = NpcResolves(sim, T, m) || acted;
+                if (!acted && m.Misses >= 8 && m.State == "lit") SettleByRoom(sim, T, m);
+            }
         }
 
         static void CollapseTheory(Simulation sim, TrialState T, Theory th, string by, string why, bool quiet = false)
@@ -442,7 +457,10 @@ namespace BL23.Sim
             if (th.Holder == D.Target && th.Lie != null)
             {
                 string with = D.ClaimWith.FirstOrDefault(x => jur.Contains(x)) ?? pin?.Witness;
-                DSay(sim, T, th.Holder, "ask_culprit_detail", new Dictionary<string, string> { { "place", th.Claim != null ? S.RoomName(th.Claim.Room) : "" }, { "with", with != null ? "@" + with : "누구든" } }, BeatKind.Line, "counter", th.TrialClaim, Emotion.Neutral, Anim.CrossArms, 0.5f, th.Id);
+                // the answer fits the lie: a room (with whoever can vouch, or alone), a weapon they never saw, a sighting they
+                // stand by — not a room line with its blanks empty
+                string key = th.Claim?.Kind == PropKind.Held ? "duel_ask_weapon" : th.Claim?.Kind == PropKind.AtPlace && th.Claim.Room >= 0 ? (with != null ? "ask_culprit_detail" : "duel_ask_where") : th.Claim?.Value == "push" ? "duel_ask_push" : "duel_ask_final";
+                DSay(sim, T, th.Holder, key, new Dictionary<string, string> { { "place", th.Claim?.Room >= 0 ? PlaceWord(S, th.Holder, th.Claim.Room) : "" }, { "with", with != null ? "@" + with : "" }, { "target", "@" + (th.Claim?.A ?? D.Scapegoat) }, { "victim", "@" + D.Victim } }, BeatKind.Line, "counter", th.TrialClaim, Emotion.Neutral, Anim.CrossArms, 0.5f, th.Id);
                 var lie = D.Lies.FirstOrDefault(l => l.Id == th.Lie); D.Mind.Spent += lie?.Cost ?? 1; D.Mind.Pressure++;
                 if (pin != null && pin.Role == PlateRole.FalseAlibi && pin.State != PlateState.Flipped && pin.Witness != null && jur.Contains(pin.Witness) && Honest(S, pin.Witness))
                 {
@@ -557,12 +575,12 @@ namespace BL23.Sim
         }
 
         /// <summary>The move that would answer the riddle now (theory × plate), for hints, NPCs and the smart test player.</summary>
-        internal static (Theory th, Plate p, string outcome) BestMove(Simulation sim, TrialState T, Mystery m)
+        internal static (Theory th, Plate p, string outcome) BestMove(Simulation sim, TrialState T, Mystery m, Func<Theory, bool> allow = null)
         {
             var D = T.Debate;
             var standing = m.Theories.Select(id => DTheory(D, id)).Where(t => t != null && t.State == "standing").ToList();
             foreach (var want in new[] { "collapse", "seal" })
-                foreach (var th in standing.OrderByDescending(t => t.Id == D.FloorTheory ? 1 : 0).ThenBy(t => D.Theories.IndexOf(t)))
+                foreach (var th in standing.Where(t => allow == null || allow(t)).OrderByDescending(t => t.Id == D.FloorTheory ? 1 : 0).ThenBy(t => D.Theories.IndexOf(t)))
                     foreach (var p in D.Deck.Plates.OrderBy(p => p.N))
                     {
                         var ev = Evaluate(sim.S, T, th, p);
@@ -574,7 +592,14 @@ namespace BL23.Sim
         static bool NpcResolves(Simulation sim, TrialState T, Mystery m)
         {
             var S = sim.S; var D = T.Debate;
-            var best = BestMove(sim, T, m); if (best.th == null) return false;
+            // the room steps in on first impressions and on each other's mistakes, but the culprit's own story (where they were,
+            // whom they saw) is 민혁's to break: residents who could break it speak up (FloorRequest) — laying the plate is his.
+            // With nobody at his stand (a spectator run) there is no one else to do it.
+            bool player = PlayerIn(S, T);
+            bool Crux(Theory t) => D.Target != null && ((t.Holder == D.Target && t.Lie != null)
+                || (m.Trick == "Who" && ((t.Target != null && t.Target == D.Target) || (t.Claim != null && t.Claim.A == D.Target && t.Holder != D.Target)
+                                         || (AnsweredTheory(D, t) is Theory a && a.Holder == D.Target && a.Lie != null))));
+            var best = BestMove(sim, T, m, player ? (Func<Theory, bool>)(t => !Crux(t)) : null); if (best.th == null) return false;
             var jur = Jurors(S, T);
             string who = best.p.FoundBy != null && jur.Contains(best.p.FoundBy) && best.p.FoundBy != D.Target ? best.p.FoundBy
                        : PickHolder(sim, T, jur, x => Obs(x) + Arg(x), "npcres:" + m.Id, D.Target, best.th.Holder);

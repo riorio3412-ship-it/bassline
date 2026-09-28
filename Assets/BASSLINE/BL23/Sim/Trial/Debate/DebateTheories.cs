@@ -422,10 +422,13 @@ namespace BL23.Sim
                 case "Suicide": return $"{V}은(는) 스스로 목숨을 끊지 않았다 — 누군가 꾸몄다.";
                 case "Who":
                     {
-                        var alibi = D.Theories.FirstOrDefault(t => t.Mystery == m.Id && t.Holder == D.Target && t.Lie != null);
-                        return alibi != null && alibi.State == "collapsed"
-                            ? $"{Given(D.Target)}의 말은 사실이 아니다 — {V}이(가) 공격당한 무렵, {Given(D.Target)}은(는) 현장 가까이에 있었다."
-                            : $"{V}이(가) 공격당한 무렵, 현장 가까이에 누가 있었는지가 드러났다.";
+                        var lies = D.Theories.Where(t => t.Mystery == m.Id && t.Holder == D.Target && t.Lie != null).ToList();
+                        var alibi = lies.FirstOrDefault(t => t.State == "collapsed") ?? lies.FirstOrDefault();
+                        if (alibi == null || alibi.State != "collapsed") return $"{V}이(가) 공격당한 무렵, 현장 가까이에 누가 있었는지가 드러났다.";
+                        // what fell says what is now known: a sighting made up to turn the room, a weapon they did know, or where they were
+                        if (alibi.Claim?.Value == "push" && alibi.Claim.A != null) return $"{Given(D.Target)}의 말은 사실이 아니다 — {Given(alibi.Claim.A)}을(를) 봤다는 건 꾸며낸 말이다. 의심을 다른 사람에게 돌리려 했다.";
+                        if (alibi.Claim?.Kind == PropKind.Held) return $"{Given(D.Target)}의 말은 사실이 아니다 — {Given(D.Target)}은(는) 그 물건을 모르지 않았다.";
+                        return $"{Given(D.Target)}의 말은 사실이 아니다 — {V}이(가) 공격당한 무렵, {Given(D.Target)}은(는) 현장 가까이에 있었다.";
                     }
             }
             return m.Title;

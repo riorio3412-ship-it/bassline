@@ -194,7 +194,7 @@ dotnet run -c Release -- voice lint out.txt       # 보이스 팩 위반 0
    - 촛불 심문(`Game/Trial/CandleInquiry.cs`) → 논스톱 토론
    - 붉은 실(`Game/Trial/ThreadBoard.cs`) → 최종 결론
 3. **사건과 트릭의 다양성, 연출.**
-4. **수사의 편의성과 밀도.**
+4. **수사의 편의성과 밀도.** 목격한 준비 장면 증언, 알리바이를 깨는 목격 은판까지 했다(D-061). 남은 것: 가면의 밤에 가면 쓴 범인을 잇는 단서(시드 38), 무작위로 내도 이기는 naive 비율(D-062).
 5. **일상의 미연시화.** 식탁이 살아났으니 긴 호흡의 다인 장면을 늘린다.
 
 ## 기록 (새 작업은 여기에 한 줄씩)
@@ -260,3 +260,14 @@ dotnet run -c Release -- voice lint out.txt       # 보이스 팩 위반 0
   - 20시드 9일: 새 행사 29회 열림. 행사를 노린 설계의 결과를 `firsts … all`의 "event designs"로 본다 — 대부분 "다른 사람이 먼저 죽여서 한도가 참"과 "그래서 행사가 취소됨". 저택 행사는 저녁이고 다른 계획은 오후에 실행되는 경우가 많다.
   - 긴 어둠 속 습격 개선(D-060). 설계 기록에 행사 종류(` ev=`)를 남긴다.
   - 검증: life faults 0, campaign faults 0 IDENTICAL, premise IDENTICAL, furnknow 33/33, violence IDENTICAL, 보이스 팩 위반 0(긴 쪽 공지 줄임), 심판 20260926·4242·2 정답.
+- 2026-09-28: **수사 밀도와 심판 공정성(D-061, D-062).**
+  - 수사: 범인이 살인에 성공한 계획이면, 목격자는 자기가 본 준비 장면(잔을 채움·흉기를 챙김·쪽지)을 캐물으면 말한다(`Testimony.Saw`, 대사 `saw_beat`). 민혁이 수사 중 그 사람에게서 직접 들은 목격은 심판에서 "찾은" 은판이 된다(`DeckBuild.Select`).
+  - 새 은판: 범인이 주장한 방이 아닌 곳에서 범인을 본 목격, 범인이 모임에서 자리를 뜨는 걸 본 목격(`FeedOffClaim`). 그 시각 희생양을 현장 아닌 곳에서 본 목격(`FeedWitness`, 값 `elsewhere` — 희생양에게 불리하게 읽히지 않는다, `Logic`). 덱은 이 둘에게 한 자리씩 준다(목격 상한과 별개). 범인과 이어진 은판 두 장(흉기·핏자국 등)이 먼저다.
+  - 거짓말 판정(`LieBrokenBy`): "희생양을 봤다"는 거짓말은 희생양을 다른 곳에서 본 목격자의 은판으로, `beat:` 반박은 그 준비 장면 은판으로 깨진다. 촛불 대결의 희생양 반격도 같다(`DuelAnswers`).
+  - 대사: 캐묻기에 대한 범인의 답이 거짓말 종류를 따른다(방·흉기·목격). 자기 방은 "제 방". 주민이 자기 가설에 은판을 댈 때 자기 이름을 부르지 않는다(`npc_show_own`). 수수께끼 결론이 무너진 거짓말에 맞게 바뀐다(`PlaqueText`).
+  - 주민이 대신 나서기 제한(D-062, `NpcResolves`, `Stuck`).
+  - 측정(`debate <seed> smart|naive|passive`): smart 40시드 39/40(이전 35/40), passive 16시드 3/16(기준선 14/16), naive 16시드 13/16(기준선 10/16 — 힌트와 여러 반박 은판 때문, D-062).
+  - 남은 오판(시드 38, 가면의 밤·시계 알리바이): 가면 쓴 범인을 제대로 본 사람이 피해자뿐이고, 가면에 피도 안 튀었다. 법정에 범인을 가면과 잇는 은판이 없다.
+  - 기존 보이스 lint 1건(P06 카드 대사가 P18의 말버릇 "끝났습니다"를 씀)을 고쳤다. life lint 0.
+  - 검증: life faults 0 lint 0, campaign faults 0 IDENTICAL, premise faults 0 IDENTICAL, furnknow 33/33, violence faults 0 IDENTICAL, 보이스 팩 위반 0, 심판 20260926·4242·2 정답·IDENTICAL, 72회 심판 모두 세이브 왕복 IDENTICAL.
+

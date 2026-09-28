@@ -260,7 +260,9 @@ namespace BL23.Sim
                             if (c.A == null) return null;
                             if (P.State == PlateState.Flipped && P.Points == c.A) return P.Back;
                             var (r, why) = Debate.Judge(S, c, P, true);
-                            return r == LogicResult.Contradict ? why : null;
+                            if (r == LogicResult.Contradict) return why;
+                            // the sighting the culprit swore to, undone by someone who had the scapegoat elsewhere
+                            return th.Lie != null && LieBrokenBy(D, th.Lie, P) ? LineBank.FixParticles($"{P.Title} — {Given(X)}의 말과 맞지 않는다") : null;
                         }
                         return Implicates();
                     }
@@ -448,7 +450,7 @@ namespace BL23.Sim
                     }
                 }
                 string key = th.Claim?.Kind == PropKind.Held ? "duel_ask_weapon" : th.Claim?.Kind == PropKind.AtPlace && th.Claim.Room >= 0 ? (D.ClaimWith.Count > 0 ? "ask_culprit_detail" : "duel_ask_where") : th.Claim?.Value == "push" ? "duel_ask_push" : "duel_ask_final";
-                DSay(sim, T, D.Target, key, new Dictionary<string, string> { { "place", th.Claim?.Room >= 0 ? S.RoomName(th.Claim.Room) : "" }, { "with", D.ClaimWith.FirstOrDefault() != null ? "@" + D.ClaimWith.First() : "" }, { "target", "@" + (th.Claim?.A ?? D.Scapegoat) }, { "victim", "@" + D.Victim } }, BeatKind.Counter, "counter", th.TrialClaim, Emotion.Angry, Anim.CrossArms, 0.65f, th.Id);
+                DSay(sim, T, D.Target, key, new Dictionary<string, string> { { "place", th.Claim?.Room >= 0 ? PlaceWord(S, D.Target, th.Claim.Room) : "" }, { "with", D.ClaimWith.FirstOrDefault() != null ? "@" + D.ClaimWith.First() : "" }, { "target", "@" + (th.Claim?.A ?? D.Scapegoat) }, { "victim", "@" + D.Victim } }, BeatKind.Counter, "counter", th.TrialClaim, Emotion.Angry, Anim.CrossArms, 0.65f, th.Id);
                 CulpritShaken(sim, T, 0.3f);
                 D.Step = "counter-floor";
                 return "pressed";

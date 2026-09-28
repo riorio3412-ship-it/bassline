@@ -70,6 +70,15 @@ public static partial class Program
             foreach (var id in C.Npcs) foreach (var e in S.K(id).Evidence.Where(e => e.Kind != EvKind.Testimony && e.Kind != EvKind.Announcement).Take(4)) Console.WriteLine($"   {Cast.GivenOf(id)} card {e.Kind} root={e.Root} “{e.Title}”");
             if (C.Pack != null) { Console.WriteLine($"   pack story: claim {S.RoomName(C.Pack.Story.ClaimRoom)} {ClockFmt.HM(C.Pack.Story.ClaimFrom)}-{ClockFmt.HM(C.Pack.Story.ClaimTo)} with {string.Join(",", C.Pack.Story.ClaimWith.Select(Cast.GivenOf))} text “{C.Pack.Story.ClaimText}” theory “{C.Pack.Story.Theory}” scapegoat {Cast.GivenOf(C.Pack.Story.Scapegoat)} planted {string.Join(",", C.Pack.Story.Planted)}");
               foreach (var l in C.Pack.Lies) Console.WriteLine($"   lie {l.Id} {l.Topic} cost {l.Cost} “{l.Text}” brokenBy {string.Join(",", l.BrokenBy)}");
+              // what each listed witness of the "where" lie actually holds about the culprit around the claim
+              var wl = C.Pack.Lies.FirstOrDefault(l => l.Topic == "where");
+              if (wl != null) foreach (var w in wl.BrokenBy.Where(b => b.StartsWith("witness:")).Select(b => b.Substring(8)))
+              {
+                  foreach (var s in S.K(w).Sightings.Where(x => x.Target == C.Culprit && x.T1 >= C.Pack.Story.ClaimFrom - 30 && x.T0 <= C.Pack.Story.ClaimTo + 30))
+                      Console.WriteLine($"   where-breaker {Cast.GivenOf(w)} saw {S.RoomName(s.Room)} {ClockFmt.HM(s.T0)}-{ClockFmt.HM(s.T1)} id {s.IdConf:0.00} disguise {s.Disguise ?? "-"} dead {s.Dead}");
+                  foreach (var f in S.K(w).Facts.Where(f => f.StartsWith("left-gathering:") || f.StartsWith("left-table:"))) Console.WriteLine($"   where-breaker {Cast.GivenOf(w)} fact {f}");
+              }
+              foreach (var e in S.Ledger.Where(e => wl != null && wl.BrokenBy.Contains("ledger:" + e.Seq))) Console.WriteLine($"   where-breaker ledger {e.Seq} {e.Type} {Cast.GivenOf(e.Actor)} {S.RoomName(e.Room)} {ClockFmt.HM(e.Clock)} {e.Data}");
               foreach (var f in C.Pack.Fallbacks) Console.WriteLine($"   fallback {f.Order} [{f.Trigger}] “{f.Story}” concedes {f.Concedes} keeps {f.Keeps}");
               foreach (var sh in C.Pack.Shields) Console.WriteLine($"   shield {sh.Rule}:{sh.Tactic} “{sh.Argument}”"); }
         }

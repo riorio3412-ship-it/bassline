@@ -47,7 +47,7 @@ namespace BL23.Sim
             var d = new CaseDeck { Incident = inc.Id, Loop = S.Loop, Chapter = S.Chapter, Frozen = S.Clock, FrozenSeq = S.Seq, Source = C.Pack != null ? "pack,legacy" : "legacy" };
             double u = MurderHash.U01(S, "deck-fakes:" + inc.Id); d.FakeTarget = u < 0.25 ? 4 : u < 0.75 ? 5 : 6;
             var cands = new List<Plate>();
-            FeedBody(C, cands); FeedTraces(C, cands); FeedFurniture(C, cands); FeedItems(C, cands); FeedWitness(C, cands); FeedCulpritSeen(C, cands); FeedBeats(C, cands); FeedHunt(C, cands); FeedMasque(C, cands); FeedCalls(C, cands); FeedAlibi(C, cands); FeedCoincidence(C, cands); FeedHeld(C, cands);
+            FeedBody(C, cands); FeedTraces(C, cands); FeedFurniture(C, cands); FeedItems(C, cands); FeedWitness(C, cands); FeedCulpritSeen(C, cands); FeedOffClaim(C, cands); FeedBeats(C, cands); FeedHunt(C, cands); FeedMasque(C, cands); FeedCalls(C, cands); FeedAlibi(C, cands); FeedCoincidence(C, cands); FeedHeld(C, cands);
             BuildClaims(C, d, cands);
             LinkPlates(C, d, cands);
             Select(C, d, cands);
@@ -227,6 +227,19 @@ namespace BL23.Sim
                     p.Witness = w; p.Seen = target; p.Alibi.Add(target); p.Back = LineBank.FixParticles($"그 시각 {G(target)}은(는) 현장이 아닌 {S.RoomName(s.Room)}에 있었다."); cands.Add(p);
                     break;
                 }
+            // the culprit's false sighting ("I saw the scapegoat heading for the scene") needs someone who had the scapegoat elsewhere
+            // around then — not a full alibi for the kill, but enough to break those words (the pack's own breakers for the lie)
+            var sawLie = C.Pack?.Lies?.FirstOrDefault(l => l.Topic == "saw");
+            if (sawLie != null && C.Scapegoat != null && !cands.Any(p => p.Role == PlateRole.Clear && p.Alibi.Contains(C.Scapegoat)))
+                foreach (var w in sawLie.BrokenBy.Where(b => b.StartsWith("witness:")).Select(b => b.Substring(8)).Where(x => C.Npcs.Contains(x) && x != C.Scapegoat && x != C.Culprit).OrderBy(x => x, StringComparer.Ordinal))
+                {
+                    var s = S.K(w).Sightings.Where(x => x.Target == C.Scapegoat && x.IdConf > 0.5f && x.Room >= 0 && x.Room != C.KillRoom && Math.Abs(x.T0 - C.KillClock) < 20).OrderBy(x => Math.Abs(x.T0 - C.KillClock)).FirstOrDefault();
+                    if (s == null) continue;
+                    var props = new[] { new Prop { Kind = PropKind.AtPlace, A = C.Scapegoat, Room = s.Room, T0 = s.T0, T1 = s.T1, Value = "elsewhere" } };
+                    var p = NewPlate(C, "talk:" + w + ":saw:" + C.Scapegoat, PlateKind.Witness, PlateRole.Seam, true, LineBank.FixParticles($"{G(w)}이(가) 본 것"), $"{ClockFmt.Anchor(s.T0)}, {S.RoomName(s.Room)}. {G(C.Scapegoat)} — {G(w)}", s.Room, s.T0, s.T1, props);
+                    p.Witness = w; p.Seen = C.Scapegoat; p.Back = LineBank.FixParticles($"그 무렵 {G(C.Scapegoat)}은(는) 현장 쪽이 아닌 {S.RoomName(s.Room)}에 있었다."); cands.Add(p);
+                    break;
+                }
         }
 
         // ---- fair play: what someone saw of the culprit away from the scene that still ties them to it — the weapon in their
@@ -317,6 +330,46 @@ namespace BL23.Sim
                 p.Witness = w; p.Seen = C.Culprit; p.Title = LineBank.FixParticles(p.Title); p.Face = LineBank.FixParticles(p.Face);
                 p.Back = LineBank.FixParticles(string.IsNullOrEmpty(b.Meaning) ? b.Text : $"그때는 {b.Innocent ?? "아무렇지 않아 보였다"} — 사실은 {b.Meaning}.");
                 cands.Add(p); if (++n >= 2) return;
+            }
+        }
+
+        // ---- fair play for the alibi: the pack's own breakers of the culprit's "where" — someone who saw them somewhere other than
+        //      the room they claim while the claim runs, or saw them get up and leave the gathering they claim — are witnesses the
+        //      court can call. Without a plate of theirs the alibi could only stand (the lie breaks on a plate from its breaker).
+        static void FeedOffClaim(CaseFacts C, List<Plate> cands)
+        {
+            var S = C.S; var st = C.Pack?.Story; var lie = C.Pack?.Lies?.FirstOrDefault(l => l.Topic == "where");
+            if (st == null || lie == null || C.Culprit == null || st.ClaimRoom < 0) return;
+            string claimRoom = S.RoomName(st.ClaimRoom); int n = 0;
+            foreach (var w in lie.BrokenBy.Where(b => b.StartsWith("witness:")).Select(b => b.Substring(8)).Where(x => x != C.Culprit && C.Npcs.Contains(x)).OrderBy(x => x, StringComparer.Ordinal))
+            {
+                if (cands.Any(p => p.True && p.Kind == PlateKind.Witness && p.Witness == w && p.Seen == C.Culprit && p.Props.Any(x => x.Kind == PropKind.AtPlace && x.Room != st.ClaimRoom))) continue;
+                var k = S.K(w);
+                var s = k.Sightings.Where(x => x.Target == C.Culprit && x.IdConf >= 0.6f && x.Disguise == null && !x.Dead && x.Room >= 0 && x.Room != st.ClaimRoom && x.T0 <= st.ClaimTo - 1 && x.T1 >= st.ClaimFrom + 1)
+                                   .OrderBy(x => Math.Abs(x.T0 - C.KillClock)).ThenBy(x => x.T0).FirstOrDefault();
+                if (s != null)
+                {
+                    var props = new[] { new Prop { Kind = PropKind.AtPlace, A = C.Culprit, Room = s.Room, T0 = s.T0, T1 = s.T1 } };
+                    var p = NewPlate(C, "talk:" + w + ":off:" + C.Culprit, PlateKind.Witness, PlateRole.Link, true, LineBank.FixParticles($"{G(w)}이(가) 본 것"), $"{ClockFmt.Anchor(s.T0)}, {S.RoomName(s.Room)}. {G(C.Culprit)} — {G(w)}", s.Room, s.T0, s.T1, props);
+                    p.Witness = w; p.Seen = C.Culprit;
+                    p.Back = LineBank.FixParticles($"{G(C.Culprit)}이(가) 있었다고 한 곳은 {claimRoom} — 그런데 그 시각 {G(C.Culprit)}은(는) {S.RoomName(s.Room)}에 있었다.");
+                    cands.Add(p); if (++n >= 2) return; continue;
+                }
+                // they saw them get up and go (a gathering, a table) shortly before the attack — the claim's "the whole time" fails
+                int left = -1, room = -1;
+                foreach (var f in k.Facts.Where(f => f.StartsWith("left-gathering:" + C.Culprit + ":", StringComparison.Ordinal) || f.StartsWith("left-table:" + C.Culprit + ":", StringComparison.Ordinal)))
+                {
+                    var parts = f.Split(':'); if (parts.Length < 4 || !int.TryParse(parts[3], out var clock)) continue;
+                    if (clock > C.KillClock + 5 || C.KillClock - clock > 45 || (left >= 0 && Math.Abs(C.KillClock - clock) >= Math.Abs(C.KillClock - left))) continue;
+                    left = clock;
+                    room = parts[0] == "left-table" && int.TryParse(parts[2], out var r) ? r : S.Gatherings.FirstOrDefault(g => g.Id == parts[2])?.Cur.Room ?? st.ClaimRoom;
+                }
+                if (left < 0) continue;
+                if (room < 0) room = st.ClaimRoom;
+                var q = NewPlate(C, "talk:" + w + ":left:" + C.Culprit, PlateKind.Witness, PlateRole.Link, true, LineBank.FixParticles($"{G(w)}이(가) 본 것"), $"{ClockFmt.Anchor(left)}, {S.RoomName(room)}. 자리를 뜨는 {G(C.Culprit)} — {G(w)}", room, left, left, null);
+                q.Witness = w; q.Seen = C.Culprit;
+                q.Back = LineBank.FixParticles($"{G(C.Culprit)}은(는) 그 자리에 끝까지 있지 않았다 — {ClockFmt.Vague(left)}에 자리를 떴다.");
+                cands.Add(q); if (++n >= 2) return;
             }
         }
 
@@ -663,7 +716,7 @@ namespace BL23.Sim
                 if (p == null || all.Contains(p) || all.Any(x => x.Root == p.Root)) return false;
                 // fakes never fill the witness stand on their own: the sound that sets the time and the culprit's ties keep a place
                 if (p.Kind == PlateKind.Witness && !p.True && all.Count(x => x.Kind == PlateKind.Witness && !x.True) >= FakeWitnessCap) { d.Log.Add("fake witness cap: " + p.Root); return false; }
-                if (p.Kind == PlateKind.Witness && Wit() >= WitnessCap && why != "link" && why != "sound") { d.Log.Add("witness cap: " + p.Root + " (" + why + ")"); return false; }
+                if (p.Kind == PlateKind.Witness && Wit() >= WitnessCap && why != "link" && why != "sound" && why != "lie") { d.Log.Add("witness cap: " + p.Root + " (" + why + ")"); return false; }
                 all.Add(p); return true;
             }
             // fakes first (the boss first): a route, a user, ≤2 pointing at one person
@@ -686,8 +739,17 @@ namespace BL23.Sim
                     Take(trues.Where(t => f.Routes.Contains("pl:" + t.Id)).OrderBy(t => t.Kind == PlateKind.Witness ? 1 : 0).ThenBy(t => t.Root, StringComparer.Ordinal).FirstOrDefault(), "route");
             // one culprit link (a witness or a trace the culprit left on the way), one clear, one sound
             // fair play: up to two witnessed ties to the culprit (at the scene, the weapon in hand, blood after) — past the witness cap
-            foreach (var t in trues.Where(p => p.Role == PlateRole.Link && p.Kind == PlateKind.Witness && p.Seen == C.Culprit).OrderBy(p => p.Props.Any(x => x.Kind == PropKind.AtPlace) ? 0 : 1).ThenBy(p => Math.Abs(p.T0 - C.KillClock)).ThenBy(p => p.Root, StringComparer.Ordinal).Take(2)) Take(t, "link");
+            // (a sighting off the claimed room only breaks the alibi — it has its own place below, so the ties go first)
+            bool OffClaim(Plate p) => p.Root.Contains(":off:") || p.Root.Contains(":left:");
+            foreach (var t in trues.Where(p => p.Role == PlateRole.Link && p.Kind == PlateKind.Witness && p.Seen == C.Culprit).OrderBy(p => OffClaim(p) ? 1 : 0).ThenBy(p => p.Props.Any(x => x.Kind == PropKind.AtPlace) ? 0 : 1).ThenBy(p => Math.Abs(p.T0 - C.KillClock)).ThenBy(p => p.Root, StringComparer.Ordinal).Take(2)) Take(t, "link");
             Take(trues.Where(p => p.Role == PlateRole.Clear).OrderBy(p => p.Root, StringComparer.Ordinal).FirstOrDefault(), "clear");
+            // the culprit's alibi must be breakable: one plate from a witness on the where-lie's own list, when none is in yet
+            var whereLie = C.Pack?.Lies?.FirstOrDefault(l => l.Topic == "where");
+            bool BreaksWhere(Plate p) => whereLie != null && p.True && p.Kind == PlateKind.Witness && p.Seen == C.Culprit && p.Witness != null && whereLie.BrokenBy.Contains("witness:" + p.Witness);
+            if (whereLie != null && !all.Any(BreaksWhere))
+                Take(trues.Where(BreaksWhere).OrderBy(p => p.Props.Any(x => x.Kind == PropKind.AtPlace) ? 0 : 1).ThenBy(p => Math.Abs(p.T0 - C.KillClock)).ThenBy(p => p.Root, StringComparer.Ordinal).FirstOrDefault(), "lie");
+            // whoever had the scapegoat elsewhere while the culprit says they saw them heading for the scene (the lie's breaker)
+            Take(trues.Where(p => p.Role == PlateRole.Seam && p.Kind == PlateKind.Witness && p.Seen != null && p.Seen == C.Scapegoat).OrderBy(p => p.Root, StringComparer.Ordinal).FirstOrDefault(), "lie");
             Take(trues.Where(p => p.Role == PlateRole.Confirm).OrderBy(p => Math.Abs(p.T0 - C.KillClock)).ThenBy(p => p.Root, StringComparer.Ordinal).FirstOrDefault(), "sound");
             // the scene: struggle marks and blood where it happened, the culprit's own traces on the way, the weapon, the furniture
             foreach (var t in trues.Where(p => p.Kind != PlateKind.Witness && p.Kind != PlateKind.Body).OrderBy(p => SceneOrder(C, p)).ThenBy(p => p.Root, StringComparer.Ordinal))
@@ -715,7 +777,11 @@ namespace BL23.Sim
             // found / borrowed / late (from the House's discovery photograph)
             foreach (var p in d.Plates)
             {
-                bool mine = S.K(Cast.Player).Evidence.Any(e => e.Root != null && (e.Root == p.Root || e.Root.EndsWith(p.Root))) || S.K(Cast.Player).Examined.Contains(p.Root) || p.Kind == PlateKind.Body;
+                // found by 민혁: examined, in his evidence, or told to him by this very witness during the investigation (what they
+                // saw of that person around that time) — then it is his to lay, not a plate borrowed in court
+                bool heard = p.Kind == PlateKind.Witness && p.Witness != null && p.Seen != null
+                    && S.K(Cast.Player).Statements.Any(st => st.Speaker == p.Witness && st.Prop != null && (st.Prop.A == p.Seen || st.Prop.B == p.Seen) && Math.Abs(st.Prop.T0 - p.T0) < 25);
+                bool mine = heard || S.K(Cast.Player).Evidence.Any(e => e.Root != null && (e.Root == p.Root || e.Root.EndsWith(p.Root))) || S.K(Cast.Player).Examined.Contains(p.Root) || p.Kind == PlateKind.Body;
                 var finder = mine ? null : C.Npcs.FirstOrDefault(w => S.K(w).Evidence.Any(e => e.Root != null && (e.Root == p.Root || e.Root.EndsWith(p.Root))) || w == p.Witness);
                 p.State = mine ? PlateState.Found : finder != null ? PlateState.Borrowed : PlateState.Late;
                 p.FoundBy = mine ? Cast.Player : finder;
