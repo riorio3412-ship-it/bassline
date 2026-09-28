@@ -343,6 +343,37 @@ Documentation/BL23/HANDOFF.md 를 읽고 이전 세션 작업을 이어서 해�
 
 ## 3. 지금까지 완료된 것 (검증 상태 포함)
 
+### 3.000 클라우드 세션 (2026-09-28 오후) — 가구 변화 커밋 경로 + 사람별 지식 (최신)
+- **작업 환경:** Claude Code 클라우드 세션(리눅스). 오너 PC 폴더에 직접 접근할 수 없어서, 오너가 올린 코드 스냅샷(`BASSLINE_1_code.zip`, 모델·텍스처·빌드 제외)으로 작업했다.
+  - 저장소: `riorio3412-ship-it/bassline`, 브랜치 `claude/ecstatic-mccarthy-w08ico`.
+  - Unity가 없어서 **GameCompile·Unity 빌드·프로브는 미실행**이다. 커널은 `dotnet-sdk-10.0`(apt)으로 SimTests를 돌렸다.
+  - 재개 방법과 PC에 반영하는 방법: `Documentation/BL23/CLOUD_RESUME.md`.
+- **목표 (BASSLINE_CLAUDE_CODE_START.md 9절 B·C단계, PHY-01/KNOW-01/SAVE-01):** 가구 변화 하나를 사실 → 관찰 → 나중 발견 → 저장까지 연결한다.
+- **새 파일 `Sim/Systems/FurnitureChanges.cs`:** 모든 가구 변화는 `CommitFurnitureChange`로 들어온다.
+  - 변화마다 `Furniture.Rev`가 오른다.
+  - 옮긴 사람은 Did를 남긴다.
+  - 그 자리를 실제로 볼 수 있던 사람은 Saw를 남긴다. 판정은 See와 같은 눈(조명, 78° 시야, 거리, 벽과 닫힌 문)이고, 옮긴 사람이 보였을 때만 이름을 안다.
+  - 나머지 사람은 **자기가 마지막으로 본 상태**(`Knowledge.FurnitureKnown`)를 그대로 가진다. 다음에 볼 때 다르면 Noticed를 남긴다.
+    - 이름은 없고, "since"는 그 사람의 지난 방문 시각이다.
+    - 방을 몰랐던 사람은 넘어짐이나 크게 부서짐만 알아챈다.
+    - 플레이어는 `Notice` 이벤트(key `furniture`)로 알림을 받는다.
+  - 소리는 기존 `Sound()`를 쓴다. 가구 끄는 소리에 `SoundKind.Scrape`를 추가했다(enum 끝에 추가).
+- **연결한 호출 지점:**
+  - Unity 물리: `PhysicsFurnitureMoved`와 `PhysicsFurnitureDamaged`. 같은 정지 자세가 두 번 보고되면 무시한다.
+  - 몸싸움 넘어뜨림(Assaults), 사후 흔적 넘어짐(Gore), 넘어뜨림 트랩(Tricks), CH12 이동식 전시(Rules), 시신 끌기 러그(ViolencePlans), 총격 구멍·파쇄(Firearms).
+- **버그 수정:**
+  - 넘어뜨림 트랩이 `Origin`을 덮어쓰던 문제를 고쳤다. 트랩과 CH12는 이제 `RelocateFurniture`로 옮겨서 좌석, 작업 자리, 내비가 가구를 따라간다.
+  - 부딪힌 아이템이 플레이어 층으로 순간이동하던 문제를 고쳤다(`PhysicsItemDamaged`).
+- **게임 레이어 (Unity 컴파일 미확인, 두 줄):**
+  - `WorldPresenter.PlaySound`에서 Scrape → `chair_scrape`.
+  - `NoteUI.SoundShort`에서 Scrape → "끄는 소리".
+- **저장:** 새 필드는 `Furniture.Rev`와 `Knowledge.FurnitureNotes`, `FurnitureKnown`, `RoomSeenAt`이다. 옛 세이브는 빈 값으로 로드된다(테스트로 확인).
+- **검증:**
+  - 새 `SimTests furnknow 20260926 6`: **33/33 통과**. 목격, 뒤돌아 있음, 옆방, 위층, 나중 방문, 처음 온 사람, 밝음·어둠, 문 열림·닫힘, 저장 라운드트립, 옛 세이브, 로드 후 다른 미래, 6일 캠페인 감사(CH12 강제)를 본다.
+  - `campaign 20260926 6`: faults=0, roundtrip IDENTICAL(변경 전후 동일).
+  - `PhysicalityTests` 20/20, `PhysicalityIntegrationTests` 4/4(변경 전 기준).
+- **다음:** 이 지식을 증언과 심판에 연결한다. 예: "식당 의자가 옮겨져 있었다"를 심판 비트와 은판 근거로 쓴다. 회상 재생에 가구 궤적도 넣는다.
+
 ### 3.00 사용량 한도로 전체 중단 (2026-09-28 00:0x) — 재개 지점
 월 사용 한도(주간 한도는 9/30 10:00 KST에 리셋)로 모든 에이전트와 워크플로가 도중에 멈췄다. 멈춘 직후 트리는 GameCompile 오류 0개였다.
 - **워크플로 (Workflow resumeFromRunId로 재개, 스크립트는 `Documentation/BL23/workflows/*.js`):**

@@ -1,3 +1,16 @@
+## 2026-09-28 BL23 클라우드 세션 — 가구 변화의 사실·목격·나중 발견 연결
+
+작업 위치는 BL23 커널(`Assets/BASSLINE/BL23/Sim`)이다. 클라우드 세션에서는 오너 PC 폴더를 직접 볼 수 없어서, 오너가 올린 코드 스냅샷으로 작업했다. 저장소는 `riorio3412-ship-it/bassline`, 브랜치는 `claude/ecstatic-mccarthy-w08ico`다.
+
+가구를 바꾸는 모든 경로(Unity 물리, 몸싸움, 트랩, 규칙, 총격 등)를 한 커밋 경로로 모았다. 옮긴 사람, 본 사람(누구인지는 보였을 때만), 소리만 들은 사람, 나중에 와서 달라진 걸 알아챈 사람(이름 없음)이 서로 다른 지식을 갖는다. 저장·불러오기에도 포함된다.
+
+- **확인:**
+  - `SimTests furnknow` 33/33.
+  - `campaign 20260926 6` faults=0, roundtrip IDENTICAL.
+- **미실행:** Unity GameCompile, Windows 빌드, 실플레이.
+- **상세:** `Documentation/BL23/HANDOFF.md §3.000`
+- **재개와 PC 반영:** `Documentation/BL23/CLOUD_RESUME.md`
+
 ## 2026-09-26 v0.31 — 가족 갈등 대화 / 비폭력 행동 선택
 
 최신 전달 실행본: Builds/BASSLINE_v0.31/BASSLINE.exe. 최종 Logs/v031-build-02.log 성공, 오류 0 / 경고 15, 33.457484초. 바탕화면 BASSLINE v0.31 바로가기. 이전 실행본 보존.
