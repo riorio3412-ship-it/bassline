@@ -1,0 +1,57 @@
+{
+ "face_front": {
+  "skin_px_on_hair_locks_before": 10323,
+  "after": 346,
+  "lock_px": 59132
+ },
+ "face_34L": {
+  "skin_px_on_hair_locks_before": 11712,
+  "after": 260,
+  "lock_px": 59786
+ },
+ "face_34R": {
+  "skin_px_on_hair_locks_before": 2467,
+  "after": 369,
+  "lock_px": 51371
+ },
+ "face_profL": {
+  "skin_px_on_hair_locks_before": 2857,
+  "after": 40,
+  "lock_px": 42725
+ },
+ "face_profR": {
+  "skin_px_on_hair_locks_before": 1673,
+  "after": 141,
+  "lock_px": 40913
+ },
+ "face_high": {
+  "skin_px_on_hair_locks_before": 5977,
+  "after": 307,
+  "lock_px": 40220
+ },
+ "face_low": {
+  "skin_px_on_hair_locks_before": 10241,
+  "after": 414,
+  "lock_px": 63376
+ },
+ "eyes_both": {
+  "skin_px_on_hair_locks_before": 110656,
+  "after": 1513,
+  "lock_px": 436462
+ },
+ "hairline_close": {
+  "skin_px_on_hair_locks_before": 58016,
+  "after": 1044,
+  "lock_px": 253216
+ },
+ "ear_L_close": {
+  "skin_px_on_hair_locks_before": 1712,
+  "after": 219,
+  "lock_px": 80152
+ },
+ "ear_R_close": {
+  "skin_px_on_hair_locks_before": 1092,
+  "after": 380,
+  "lock_px": 149021
+ }
+}

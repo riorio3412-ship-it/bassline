@@ -49,6 +49,8 @@ python3 "$HERE/10_diagnostics.py" "$WORK/p10_orig.glb" "$WORK/renders_before" "$
 blender -b --python "$HERE/verify_blender.py" -- "$WORK/p10_fixed.glb" "$WORK/p10_fixed_blender_check.json" \
   > "$WORK/verify_blender.log" 2>&1
 python3 "$HERE/08_verify.py" "$WORK/p10_orig.glb" "$WORK/p10_fixed.glb" "$OUT/scripts/verify_result.json"
+python3 "$HERE/12_metrics.py" "$WORK/p10_orig.glb" "$WORK/analysis" "$WORK/renders_before" "$WORK/renders_after" \
+  "$OUT/scripts/metrics_result.json"
 
 # ---- optional variant: centre bang lock keeps its original (skin) paint, everything else identical
 P10_KEEP_CENTER_LOCK=1 run_fix "$WORK/variant" "$WORK/variant/p10_variant.glb"

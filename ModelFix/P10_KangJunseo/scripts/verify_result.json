@@ -1,6 +1,6 @@
 {
  "orig_size": 5156976,
- "fixed_size": 5156388,
+ "fixed_size": 5156108,
  "geometry_buffers_byte_identical": true,
  "gltf_json_identical_except_buffer_layout": true,
  "all_images_same_resolution_and_jpeg": true,
@@ -13,7 +13,7 @@
     512
    ],
    "bytes_before": 67567,
-   "bytes_after": 66933
+   "bytes_after": 66811
   },
   {
    "image": 10,
@@ -23,7 +23,7 @@
     512
    ],
    "bytes_before": 56739,
-   "bytes_after": 56629
+   "bytes_after": 56577
   },
   {
    "image": 14,
@@ -33,7 +33,7 @@
     256
    ],
    "bytes_before": 25090,
-   "bytes_after": 26066
+   "bytes_after": 26063
   },
   {
    "image": 19,
@@ -53,7 +53,7 @@
     256
    ],
    "bytes_before": 18112,
-   "bytes_after": 17997
+   "bytes_after": 17897
   }
  ],
  "pygltflib": {
