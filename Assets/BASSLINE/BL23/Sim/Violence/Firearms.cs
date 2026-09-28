@@ -406,20 +406,23 @@ namespace BL23.Sim
             }
             if (where == "furniture" && imp.Furniture >= 0)
             {
-                var f = S.Layout.Furniture[imp.Furniture];
+                var f = S.Layout.Furniture[imp.Furniture]; int damageBefore = f.Damage;
                 if (!f.Marks.Contains(shotgun ? "산탄 자국" : "총알 구멍")) f.Marks.Add(shotgun ? "산탄 자국" : bolt ? "화살이 박혔던 구멍" : "총알 구멍");
                 f.Damage = Math.Max(f.Damage, 1);
                 S.Emit(GameEventType.Furniture, shot.By, text: "shot", id: f.Id, pos: f.Pos, value: yaw);
+                if (f.Damage > damageBefore) sim.CommitFurnitureChange(f, shot.By, "shot", f.Pos, f.Yaw, damageBefore);
             }
         }
 
         static void Shatter(Simulation sim, Furniture f, Actor by)
         {
             var S = sim.S; if (f.Damage >= 3) return;
+            int damageBefore = f.Damage;
             f.Damage = 3; if (!f.Marks.Contains("산산조각 났다")) f.Marks.Add("산산조각 났다");
             sim.Sound(SoundKind.GlassBreak, new P3(f.Pos.f, f.Pos.x, f.Pos.z), 0.7f, by?.Id);
             S.Emit(GameEventType.Furniture, by?.Id, text: "shatter", id: f.Id, pos: f.Pos);
             S.Log("FurnitureHit", by?.Id, room: f.Room, pos: f.Pos, data: f.Type + ":shot", secret: true);
+            sim.CommitFurnitureChange(f, by?.Id, "shot", f.Pos, f.Yaw, damageBefore);
         }
 
         /// <summary>A crossbow bolt stays where it struck: in a body (it moves with it), a door, a piece of furniture or the wall.</summary>

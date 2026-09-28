@@ -230,8 +230,9 @@ namespace BL23.Sim
                 var rug = S.Layout.Room(room)?.Furniture.Select(i => S.Layout.Furniture[i]).FirstOrDefault(f => f.Type == "Rug" && RimDist(f, heel) < 0.01f);
                 if (rug != null && !rug.Marks.Contains("밀려나 주름져 있다"))
                 {
-                    rug.Marks.Add("밀려나 주름져 있다"); if (!rug.Moved) { rug.Moved = true; rug.Origin = rug.Pos; }
+                    rug.Marks.Add(Simulation.RumpledMark); rug.Moved = true;
                     S.Emit(GameEventType.Furniture, a.Id, text: "rug", id: rug.Id, pos: rug.Pos, value: a.Yaw);
+                    sim.CommitFurnitureChange(rug, a.Id, "rug", rug.Pos, rug.Yaw, rug.Damage);
                 }
             }
             // a finished drag forgets its last mark (checked now and then: the flag table is large)

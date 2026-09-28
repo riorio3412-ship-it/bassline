@@ -139,6 +139,8 @@ namespace BL23.Sim
         public int Damage;          // 0 intact .. 3 broken
         public List<string> Marks = new List<string>();
         public bool Moved; public P3 Origin;
+        // Sim/Systems/FurnitureChanges.cs: every committed change bumps Rev (people remember the Rev they last took in)
+        public int Rev;
     }
 
     [Serializable]

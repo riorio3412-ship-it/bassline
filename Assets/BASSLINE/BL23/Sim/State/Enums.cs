@@ -20,7 +20,8 @@ namespace BL23.Sim
     public enum Emotion { Neutral, Smile, Grin, Angry, Sad, Surprised, Fear, Smirk, Disgust, Blank, Dead, Pain, Crying, Laugh, Break }
 
     public enum SoundKind { Footsteps, Running, Door, DoorSlam, Knock, Talk, Shout, Scream, Strike, Struggle, Fall, GlassBreak, Crash, Splash, Machine, Press, Switch, Music, Laugh, Cry, Bell, Announcement, Rain, Static, Clock,
-        Gunshot   // (appended, violence track: Sim/Violence/Firearms.cs — heard house-wide) never renumber the members above
+        Gunshot,  // (appended, violence track: Sim/Violence/Firearms.cs — heard house-wide) never renumber the members above
+        Scrape    // (appended) furniture dragged or shoved across the floor (Sim/Systems/FurnitureChanges.cs)
     }
 
     public enum EvKind { Sighting, Heard, Testimony, Trace, Body, ObjectState, Document, Record, Announcement, Deduction, Ability }

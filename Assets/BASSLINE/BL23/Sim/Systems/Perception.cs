@@ -108,6 +108,7 @@ namespace BL23.Sim
                     k.ItemSeen[it.Id] = (it.Room, S.Clock);
                 }
             if (pieces != null) foreach (var it in pieces) Methods.OnPieceSeen(this, o, it);
+            if (!o.IsButler) NoticeFurniture(o, k);   // FurnitureChanges.cs: a piece not as they last knew it
         }
 
         void Observe(Actor o, Knowledge k, Actor t, string who, float idc, string disg, float dist)
@@ -252,6 +253,7 @@ namespace BL23.Sim
                 case SoundKind.Bell: return "호출벨"; case SoundKind.Music: return "음악"; case SoundKind.Laugh: return "웃음"; case SoundKind.Cry: return "울음";
                 case SoundKind.Announcement: return "안내 방송"; case SoundKind.Rain: return "비 오는"; case SoundKind.Static: return "지직거리는"; case SoundKind.Clock: return "괘종시계";
                 case SoundKind.Gunshot: return "총";   // --- violence track
+                case SoundKind.Scrape: return "무언가 바닥에 끌리는";
             }
             return k.ToString();
         }

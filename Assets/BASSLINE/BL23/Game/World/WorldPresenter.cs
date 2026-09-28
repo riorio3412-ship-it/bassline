@@ -209,6 +209,7 @@ namespace BL23.Game
                 case SoundKind.Switch: Sfx.Play("light_switch", pos, 0.6f); break;
                 case SoundKind.Fall: Sfx.Play("body_fall", pos, 0.7f); break;
                 case SoundKind.Struggle: Sfx.Play("slap", pos, 0.5f); break;
+                case SoundKind.Scrape: Sfx.Play("chair_scrape", pos, Mathf.Clamp(e.Value * 1.6f, 0.2f, 0.6f)); break;   // furniture dragged/shoved (FurnitureChanges.cs)
             }
             if (e.Text == "Noise") Mansion?.SetNoise(e.Value);
         }

@@ -25,6 +25,7 @@ public static partial class Program
         if (mode == "violence") return ViolenceTest(args); // ViolenceTest.cs: prolonged kills, restraint, firearms, crossbow, dragging (violence track)
         if (mode == "initiative") return InitiativeTest(args); // Initiative.cs: the proactive culprit mind — variety, preparation, rule shields, trial packs
         if (mode == "life") return LifeTest(args);         // LifeTests.cs: daily life — pair scenes, table, hearts, hangouts, festivals, rumours, aftermath (DailyLifeDesign §11)
+        if (mode == "furnknow") return FurnitureKnowledgeTest(args); // FurnitureKnowledgeTest.cs: one furniture change → fact / sight / hearing / later notice, save/load
         Console.WriteLine("unknown mode " + mode); return 1;
     }
 

@@ -640,11 +640,13 @@ namespace BL23.Sim
             var f = room.Furniture.Select(i => S.Layout.Furniture[i]).Where(ff => ff.Pos.f == v.Pos.f && Gore.ToppleKind(ff) && ff.Damage == 0 && !ff.Marks.Contains("넘어져 있다") && ff.Pos.DistXZ(v.Pos) < 1.7f)
                 .OrderBy(ff => ff.Pos.DistXZ(v.Pos)).ThenBy(ff => ff.Id).FirstOrDefault();
             if (f == null) return false;
-            f.Marks.Add("넘어져 있다"); f.Damage = Math.Max(f.Damage, 1);
-            if (!f.Moved) { f.Moved = true; f.Origin = f.Pos; }
+            int damageBefore = f.Damage;
+            f.Marks.Add(Simulation.ToppledMark); f.Damage = Math.Max(f.Damage, 1);
+            f.Moved = true;
             sim.Sound(SoundKind.Crash, new P3(f.Pos.f, f.Pos.x, f.Pos.z), 0.45f, a.Id);
             S.Emit(GameEventType.Furniture, a.Id, v.Id, text: "knocked", id: f.Id, pos: f.Pos, value: MathX.AngleDeg(f.Pos.x - v.Pos.x, f.Pos.z - v.Pos.z));
             S.Log("FurnitureHit", a.Id, room: f.Room, pos: f.Pos, data: f.Type + ":struggle", secret: true);
+            sim.CommitFurnitureChange(f, a.Id, "toppled", f.Pos, f.Yaw, damageBefore);
             if (x.Knocks == 0) sim.AddTrace("Struggle", v.Pos, v.Room, a.Id, v.Id, 0.5f, 0, "넘어진 " + (FurnitureCatalog.Get(f.Type)?.Kor ?? "가구"), "이 자리에서 격한 몸싸움이 있었다", "누구와 싸웠는지");
             return true;
         }

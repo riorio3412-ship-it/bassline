@@ -14,6 +14,8 @@ namespace BL23.Sim
         public void PhysicsItemDamaged(Item it, int damage, P3 at, string by)
         {
             if (it == null || damage <= it.Damage) return;
+            // the presentation reports the contact point on the player's floor; a loose thing knocked over upstairs stays upstairs
+            if (it.Holder == null && it.Pos.f != at.f && S.Layout.Floor(it.Pos.f) != null) at = new P3(it.Pos.f, at.x, at.z);
             var def = it.Def; it.Damage = Math.Min(3, damage); it.Pos = at; it.Room = S.Layout.RoomAt(at);
             bool shatters = def != null && (def.Mat == Mat.Glass || def.Mat == Mat.Ceramic) && it.Damage >= 2;
             if (shatters && !S.Items.Values.Any(i => i.ParentItem == it.Id))
@@ -44,50 +46,28 @@ namespace BL23.Sim
         {
             if (f == null || S?.Layout == null || S.Layout.Floor(pos.f) == null || float.IsNaN(pos.x) || float.IsInfinity(pos.x)
                 || float.IsNaN(pos.z) || float.IsInfinity(pos.z) || float.IsNaN(yaw) || float.IsInfinity(yaw)) return;
-            var oldPos = f.Pos; float oldYaw = f.Yaw; int oldRoom = f.Room;
-            int newRoom = S.Layout.RoomAt(pos);
+            // the same resting pose reported again (another collider, another settle) is not a second move
+            if (pos.f == f.Pos.f && pos.DistXZ(f.Pos) < 0.02f && Math.Abs(MathX.DeltaAngle(f.Yaw, yaw)) < 1f) return;
+            var oldPos = f.Pos; float oldYaw = f.Yaw;
             if (!f.Moved) { f.Moved = true; if (f.Origin.Equals(default(P3))) f.Origin = f.Pos; }
-            f.Pos = pos; f.Yaw = yaw; f.Room = newRoom;
-            if (oldRoom != newRoom)
-            {
-                S.Layout.Room(oldRoom)?.Furniture.Remove(f.Id);
-                var room = S.Layout.Room(newRoom);
-                if (room != null && !room.Furniture.Contains(f.Id)) room.Furniture.Add(f.Id);
-            }
-            // Seating/work approach points belong to the piece of furniture, including after a rotation or floor change.
-            double angle = (yaw - oldYaw) * Math.PI / 180.0;
-            float cosine = (float)Math.Cos(angle), sine = (float)Math.Sin(angle);
-            foreach (var spot in S.Layout.Spots)
-            {
-                if (f.Id < 0 || spot.Furniture != f.Id) continue;
-                var oldSpotRoom = S.Layout.Room(spot.Room);
-                float x = spot.Pos.x - oldPos.x, z = spot.Pos.z - oldPos.z;
-                spot.Pos = new P3(pos.f, pos.x + cosine * x + sine * z, pos.z - sine * x + cosine * z);
-                x = spot.Approach.x - oldPos.x; z = spot.Approach.z - oldPos.z;
-                spot.Approach = new P3(pos.f, pos.x + cosine * x + sine * z, pos.z - sine * x + cosine * z);
-                spot.Yaw += yaw - oldYaw; spot.Room = newRoom;
-                if (oldRoom != newRoom)
-                {
-                    oldSpotRoom?.Spots.Remove(spot.Id);
-                    var room = S.Layout.Room(newRoom);
-                    if (room != null && !room.Spots.Contains(spot.Id)) room.Spots.Add(spot.Id);
-                }
-            }
-            // Clear both caches: removing a blocker from upstairs must also make the old floor walkable.
-            S.Layout.InvalidateNav(oldPos.f);
-            if (pos.f != oldPos.f) S.Layout.InvalidateNav(pos.f);
+            RelocateFurniture(f, pos, yaw);
             S.Log("FurnitureMoved", by, room: f.Room, pos: pos, data: f.Type, secret: by == null);
-            if (by != null) Sound(SoundKind.Crash, pos, 0.15f, by);
+            // heard by anyone near enough, whoever (or whatever) moved it: a nudge is quiet, a drag across the room is not
+            float moved = oldPos.f == pos.f ? oldPos.DistXZ(pos) : 1f;
+            Sound(SoundKind.Scrape, pos, 0.12f + 0.08f * Math.Min(2.5f, moved), by);
+            CommitFurnitureChange(f, by, "moved", oldPos, oldYaw, f.Damage);
         }
 
         /// <summary>Furniture damaged by an impact.</summary>
         public void PhysicsFurnitureDamaged(Furniture f, int damage, string by)
         {
             if (f == null || damage <= f.Damage) return;
+            int before = f.Damage;
             f.Damage = Math.Min(3, damage);
             f.Marks.Add(f.Damage >= 2 ? "크게 부딪혀 금이 갔다" : "부딪힌 자국");
             Sound(f.Damage >= 2 ? SoundKind.Crash : SoundKind.Fall, f.Pos, 0.35f, by);
             S.Log("FurnitureHit", by, room: f.Room, pos: f.Pos, data: f.Type + ":" + f.Damage, secret: by == null);
+            CommitFurnitureChange(f, by, "damaged", f.Pos, f.Yaw, before);
         }
 
         /// <summary>Someone was hit by an object the player threw or shoved. A light knock stings; a heavy one hurts.</summary>

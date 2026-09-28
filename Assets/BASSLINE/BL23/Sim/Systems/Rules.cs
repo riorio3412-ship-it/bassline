@@ -133,7 +133,14 @@ namespace BL23.Sim
                 case "CH12":
                     {
                         var ped = S.Layout.Furniture.Where(f => f.Type == "Pedestal").OrderBy(_ => rng.F()).Take(3).ToList();
-                        foreach (var f in ped) { var room = S.Layout.Room(f.Room); var np = sim.RandomPointIn(room, rng); f.Pos = new P3(f.Pos.f, np.x, np.z); f.Moved = true; f.Marks.Add("옮기다 긁힌 자국"); S.Emit(GameEventType.Furniture, Cast.Butler, id: f.Id, pos: f.Pos); }
+                        foreach (var f in ped)
+                        {
+                            var room = S.Layout.Room(f.Room); var np = sim.RandomPointIn(room, rng);
+                            var fromPos = f.Pos; float fromYaw = f.Yaw;
+                            sim.RelocateFurniture(f, new P3(f.Pos.f, np.x, np.z), f.Yaw);   // its display spot moves with it
+                            f.Moved = true; f.Marks.Add("옮기다 긁힌 자국"); S.Emit(GameEventType.Furniture, Cast.Butler, id: f.Id, pos: f.Pos);
+                            sim.CommitFurnitureChange(f, Cast.Butler, "rearranged", fromPos, fromYaw, f.Damage);
+                        }
                         S.Layout.InvalidateNav(); break;
                     }
                 case "CH13":

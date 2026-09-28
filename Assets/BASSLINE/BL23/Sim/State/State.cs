@@ -164,7 +164,38 @@ namespace BL23.Sim
         public HashSet<string> Examined = new HashSet<string>();
         public Dictionary<string, float> Suspicion = new Dictionary<string, float>();
         public Dictionary<string, (int room, double t)> LastSeen = new Dictionary<string, (int, double)>();
+        // ---- furniture (Sim/Systems/FurnitureChanges.cs): what this person saw done to the furniture, or noticed later.
+        // Never the hidden cause: Who is only ever someone this person actually saw doing it.
+        public List<FurnitureNote> FurnitureNotes = new List<FurnitureNote>();
+        public Dictionary<int, FurnitureMemory> FurnitureKnown = new Dictionary<int, FurnitureMemory>(); // changed pieces only: how this person last knew them
+        public Dictionary<int, double> RoomSeenAt = new Dictionary<int, double>();    // room id → the last time this person stood in it (own memory)
         [NonSerialized] public Dictionary<string, Sighting> Open;   // rebuilt from Sightings on load
+    }
+
+    public enum FurnitureNoteKind { Did, Saw, Noticed }
+
+    /// <summary>How one person last knew a piece of furniture that has changed at least once (Sim/Systems/FurnitureChanges.cs).</summary>
+    [Serializable]
+    public sealed class FurnitureMemory
+    {
+        public int Rev;             // the change they have taken in
+        public P3 Pos; public float Yaw; public int Damage;
+        public string Disorder;     // null / toppled / rumpled
+        public double Seen;         // the last time they were in its room with it like this
+    }
+
+    /// <summary>One person's knowledge of one change to a piece of furniture: did it themselves, saw it happen, or noticed it later.</summary>
+    [Serializable]
+    public sealed class FurnitureNote
+    {
+        public int Furniture; public int Room = -1; public FurnitureNoteKind Kind;
+        public string How;          // moved / damaged / toppled / rug / rearranged (what was done, as far as it shows)
+        public string Who;          // Saw: the person seen doing it (may be a misread coat); null when nobody was seen. Noticed: always null
+        public float WhoConf;
+        public double Clock;        // when this person took it in
+        public double Since = -1;   // Noticed: the last time this person had seen it before (-1 = did not know the room)
+        public int Rev;             // the change this note is about
+        public string Root;
     }
 
     [Serializable]

@@ -226,8 +226,10 @@ namespace BL23.Sim
                 {
                     var def = FurnitureCatalog.Get(f.Type);
                     Put(new GoreMark { Kind = GoreKind.Topple, Pos = f.Pos, Room = f.Room, H = f.H, Dir = Wrap(Bearing(centre, f.Pos) + rng.Range(-25f, 25f)), Power = MathX.Clamp01(0.4f + score * 0.06f), Furniture = f.Id, Chapter = S.Chapter, By = by, Dmg = t });
-                    if (!f.Marks.Contains(ToppledLine)) f.Marks.Add(ToppledLine);
+                    bool fresh = !f.Marks.Contains(ToppledLine);
+                    if (fresh) f.Marks.Add(ToppledLine);
                     if (r != null) foreach (var si in r.Spots) { var sp = S.Layout.Spots[si]; if (sp.Furniture == f.Id && sp.Occupant == null) sp.Occupant = ToppledSpot; }
+                    if (fresh) sim.CommitFurnitureChange(f, by, "toppled", f.Pos, f.Yaw, f.Damage);   // FurnitureChanges.cs: who saw it go over, who finds it later
                 }
             }
             // at most one clue trace per death (only once the Game renders these types)

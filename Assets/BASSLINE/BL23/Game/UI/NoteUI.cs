@@ -239,6 +239,7 @@ namespace BL23.Game
                 case SoundKind.Running: return "뛰는 발"; case SoundKind.Shout: return "고함"; case SoundKind.Switch: return "딸깍"; case SoundKind.Bell: return "호출벨";
                 case SoundKind.Music: return "음악"; case SoundKind.Laugh: return "웃음"; case SoundKind.Cry: return "울음"; case SoundKind.Rain: return "빗소리";
                 case SoundKind.Static: return "지직"; case SoundKind.Clock: return "종소리";
+                case SoundKind.Scrape: return "끄는 소리";
             }
             return "소리";
         }

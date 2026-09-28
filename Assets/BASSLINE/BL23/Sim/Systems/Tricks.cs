@@ -437,9 +437,14 @@ namespace BL23.Sim
             if (t.Kind == "Topple")
             {
                 var f = S.Layout.Furniture[t.Furniture]; var sp = S.Layout.Spots[t.Spot];
-                f.Origin = f.Pos; f.Moved = true; f.Damage = 3; f.Pos = new P3(f.Pos.f, (f.Pos.x + sp.Pos.x) / 2, (f.Pos.z + sp.Pos.z) / 2);
+                // (the home position stays the one the house was built with: a piece moved before keeps its first Origin)
+                var fromPos = f.Pos; float fromYaw = f.Yaw; int fromDamage = f.Damage;
+                f.Moved = true; f.Damage = 3;
+                if (Simulation.Disorder(f) != "toppled") f.Marks.Add(Simulation.ToppledMark);
+                sim.RelocateFurniture(f, new P3(f.Pos.f, (f.Pos.x + sp.Pos.x) / 2, (f.Pos.z + sp.Pos.z) / 2), f.Yaw);   // its seats and the walkable grid follow it
                 S.Emit(GameEventType.Furniture, t.Owner, v.Id, id: f.Id, pos: f.Pos, data: "topple");
                 sim.Sound(SoundKind.Crash, f.Pos, 1f, null);
+                sim.CommitFurnitureChange(f, t.Owner, "toppled", fromPos, fromYaw, fromDamage);
                 sim.Strike(t.Owner, v, v.Pose == Pose.Sit ? BodyRegion.Head : BodyRegion.Chest, DamageType.Crush, 3 + (rng.Chance(0.5) ? 1 : 0), null, "trap:" + t.Id);
                 if (v.Alive && v.Status == ActorStatus.Active) sim.Strike(t.Owner, v, BodyRegion.ShoulderL, DamageType.Crush, 2, null, "trap:" + t.Id);
                 sim.AddTrace("Debris", f.Pos, f.Room, t.Owner, v.Id, 1.2f, 0, "쓰러진 가구와 흩어진 파편", "무거운 가구가 넘어졌다", "스스로 넘어졌는지, 누군가 손을 댔는지");
