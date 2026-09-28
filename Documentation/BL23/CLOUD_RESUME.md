@@ -1,6 +1,44 @@
 # 클라우드 세션 재개 안내 (2026-09-28 갱신)
 
-만든 것과 파일 위치는 **[`CloudWorkLog.md`](CloudWorkLog.md)**에 정리되어 있다.
+만든 것과 파일 위치는 **[`CloudWorkLog.md`](CloudWorkLog.md)**에 정리되어 있다. 지금 진행 중인 설계는 **[`SocialEventsDesign.md`](SocialEventsDesign.md)**다.
+
+## ★ 사용량이 초기화된 뒤 재개하기 — 복사해서 붙여 넣기만 하면 된다
+
+**가장 쉬운 방법: 클라우드(claude.ai/code)에서 새 세션**
+1. claude.ai/code에서 새 세션을 연다.
+2. 저장소는 `riorio3412-ship-it/bassline`, 브랜치는 `claude/ecstatic-mccarthy-w08ico`를 고른다.
+3. 아래 블록을 그대로 첫 메시지로 보낸다.
+
+**PC의 Claude Code로 할 때**
+1. 바탕화면 `BASSLINE` 폴더에서 터미널(PowerShell)을 열고 `claude`를 실행한다.
+2. 아래 블록 맨 앞에 이 한 줄을 붙여서 보낸다.
+   > 먼저 Documentation/BL23/CLOUD_RESUME.md의 "PC에 반영하기"대로 GitHub 브랜치 claude/ecstatic-mccarthy-w08ico의 작업을 이 폴더에 반영하고, Unity 컴파일 오류가 없는지 확인해 줘. 그다음:
+
+```
+BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
+1) 읽기: Documentation/BL23/CLOUD_RESUME.md, CloudWorkLog.md, SocialEventsDesign.md,
+   HANDOFF.md(§0.5 오너 원문, §1 지시, §3.0000 최신), DecisionLog.md(D-040 이후).
+2) 준비: dotnet SDK 10 설치(없으면). Tests/BL23/SimTests에서 dotnet build -c Release 후
+   "dotnet run -c Release -- campaign 20260926 6"이 faults=0, roundtrip=IDENTICAL인지 확인.
+3) 구현: SocialEventsDesign.md §6 표의 순서대로 한 단계씩 한다.
+   (1 파벌 → 2 저택 행사 → 3 주민 모임 장면 → 4 심판 연결 → 5 새 방)
+   - 이미 된 단계는 CloudWorkLog.md "기록"으로 확인하고 다음 단계부터 한다.
+4) 단계마다 검증: SimTests에서 premise 20260926 9, life, campaign 20260926 6,
+   debate 20260926 smart, "voice lint out.txt"를 돌린다.
+   faults=0, 세이브 왕복 IDENTICAL, 보이스 팩 위반 0이어야 한다.
+5) 단계마다 기록: 통과하면 커밋·푸시(브랜치 claude/ecstatic-mccarthy-w08ico, 기존 커밋 수정 금지).
+   CloudWorkLog.md "기록"에 한 줄 추가. 결정은 DecisionLog.md에 D-0xx로 추가.
+6) 지킬 것:
+   - 커널(Sim)은 결정론(해시·기존 스트림)을 지킨다. 대사는 한 쪽 60자 이하. 인물 말버릇은 CharacterBible §2.
+   - 단간론파 고유 명칭·연출은 쓰지 않는다(D-028). 대사 수위 규칙은 HANDOFF §1.4.
+   - 기존 코드와 원본 자산을 지우지 않는다. git reset --hard, git clean은 쓰지 않는다.
+   - 오너가 보낸 방 그림 48장은 SocialEventsDesign.md §5 카탈로그로 정리되어 있다.
+     그림 파일은 오너가 Assets/BASSLINE/BL23/Art/Rooms/에 넣는다.
+```
+
+**어디까지 했나 (2026-09-28 기준)**
+- 설계 문서 `SocialEventsDesign.md`까지 커밋했다.
+- 구현은 §6의 1단계(파벌)부터 시작한다. 이후 진행은 `CloudWorkLog.md` "기록"의 마지막 줄을 본다.
 
 ## 지금 상태
 - **저장소:** `riorio3412-ship-it/bassline`
