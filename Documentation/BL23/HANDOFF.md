@@ -343,7 +343,31 @@ Documentation/BL23/HANDOFF.md 를 읽고 이전 세션 작업을 이어서 해�
 
 ## 3. 지금까지 완료된 것 (검증 상태 포함)
 
-### 3.000 클라우드 세션 (2026-09-28 오후) — 가구 변화 커밋 경로 + 사람별 지식 (최신)
+### 3.0000 클라우드 세션 (2026-09-28 밤) — 토론 심판, 네 인물 성격, 소원 초대장 전제·벽·저택의 부추김 (최신)
+- **정리 문서:** 만든 것과 파일 위치는 `Documentation/BL23/CloudWorkLog.md`에 있다. 재개와 PC 반영은 `CLOUD_RESUME.md`를 본다.
+- **토론 심판 (D-040):** `Sim/Trial/Debate/` 7개 파일, `Sim/Content/Lines_Debate.cs`.
+  - 3개 정책(smart/naive/passive) 모두 판결까지 진행된다. 세이브 왕복은 동일하다.
+- **네 인물 성격과 대사 수위 (D-041):** `Voice_Traits.cs`, `Cast.cs`, `LifeBanter.cs`.
+- **새 전제 (D-042~D-045)**
+  - 오프닝: `Lines_NPC00.cs`
+  - 약속과 저택 대사: `Lines_Premise.cs`
+  - 벽: `Sim/Murder/Conscience.cs`
+  - 사다리: `Sim/Systems/HousePush.cs`
+  - 챕터 도중 규칙 부과: `Rules.Impose`
+  - 굶주림 한 단계: `Hunger.Tighten`
+- **공정성 은판 (D-046):** `DeckBuild.cs`의 `FeedCulpritSeen`.
+- **기존 버그 수정:** 식탁 장면이 첫 비트에 연결되지 않아 모든 식탁 주제가 대사 0줄이었다(`LifeTable.cs`).
+- **검증 (dotnet SimTests)**
+  - `premise`(시드 5개): 첫 살인 3~6일차, 1챕터는 한 사건, 정지 없음.
+  - `debate` smart: 매듭 3/3, 촛불 0/4.
+  - `life`: faults 0, 세이브 동일. 린트 1은 기존 항목이다.
+  - `campaign 20260926 6`: faults 0, 세이브 동일.
+  - `voice lint`: 보이스 팩 위반 0.
+- **미실행:** Unity GameCompile, 빌드, 프로브(클라우드에 Unity가 없음).
+  - `Game/Core/Session.cs`의 식탁 인원은 5명에서 7명으로 늘렸다. 한 줄 변경이다.
+- **다음:** `CloudWorkLog.md` §8.
+
+### 3.000 클라우드 세션 (2026-09-28 오후) — 가구 변화 커밋 경로 + 사람별 지식
 - **작업 환경:** Claude Code 클라우드 세션(리눅스). 오너 PC 폴더에 직접 접근할 수 없어서, 오너가 올린 코드 스냅샷(`BASSLINE_1_code.zip`, 모델·텍스처·빌드 제외)으로 작업했다.
   - 저장소: `riorio3412-ship-it/bassline`, 브랜치 `claude/ecstatic-mccarthy-w08ico`.
   - Unity가 없어서 **GameCompile·Unity 빌드·프로브는 미실행**이다. 커널은 `dotnet-sdk-10.0`(apt)으로 SimTests를 돌렸다.
