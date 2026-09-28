@@ -47,7 +47,7 @@ namespace BL23.Sim
             var d = new CaseDeck { Incident = inc.Id, Loop = S.Loop, Chapter = S.Chapter, Frozen = S.Clock, FrozenSeq = S.Seq, Source = C.Pack != null ? "pack,legacy" : "legacy" };
             double u = MurderHash.U01(S, "deck-fakes:" + inc.Id); d.FakeTarget = u < 0.25 ? 4 : u < 0.75 ? 5 : 6;
             var cands = new List<Plate>();
-            FeedBody(C, cands); FeedTraces(C, cands); FeedFurniture(C, cands); FeedItems(C, cands); FeedWitness(C, cands); FeedAlibi(C, cands); FeedCoincidence(C, cands); FeedHeld(C, cands);
+            FeedBody(C, cands); FeedTraces(C, cands); FeedFurniture(C, cands); FeedItems(C, cands); FeedWitness(C, cands); FeedCulpritSeen(C, cands); FeedAlibi(C, cands); FeedCoincidence(C, cands); FeedHeld(C, cands);
             BuildClaims(C, d, cands);
             LinkPlates(C, d, cands);
             Select(C, d, cands);
@@ -216,6 +216,46 @@ namespace BL23.Sim
                     p.Witness = w; p.Seen = target; p.Alibi.Add(target); p.Back = LineBank.FixParticles($"그 시각 {G(target)}은(는) 현장이 아닌 {S.RoomName(s.Room)}에 있었다."); cands.Add(p);
                     break;
                 }
+        }
+
+        // ---- fair play: what someone saw of the culprit away from the scene that still ties them to it — the weapon in their
+        //      hand before (수단), blood on their clothes after (기회). The court must be able to hold the killer with proof.
+        static void FeedCulpritSeen(CaseFacts C, List<Plate> cands)
+        {
+            var S = C.S; if (C.Culprit == null || C.Victim == null) return;
+            var weaponType = C.Inc.Weapon != null ? S.I(C.Inc.Weapon)?.Type : null;
+            var main = C.Victim.Body.Wounds.Where(w => !w.Postmortem).OrderByDescending(w => w.Sev).FirstOrDefault();
+            bool FitsWound(string type) { var def = ItemCatalog.Get(type); return def != null && def.IsWeapon && (type == weaponType || main != null && def.Dmg == main.Type); }
+            bool heldShown = cands.Any(p => p.True && p.Props.Any(x => x.Kind == PropKind.Held && x.A == C.Culprit));
+            foreach (var w in C.Npcs.Where(x => x != C.Culprit).OrderBy(x => x, StringComparer.Ordinal))
+            {
+                var k = S.K(w);
+                if (!heldShown)
+                {
+                    var s = k.Sightings.Where(x => x.Target == C.Culprit && x.IdConf >= 0.6f && x.Disguise == null && x.Held != null && FitsWound(x.Held) && x.T1 >= C.KillClock - 300 && x.T0 <= C.KillClock + 5)
+                                       .OrderBy(x => Math.Abs(x.T0 - C.KillClock)).FirstOrDefault();
+                    if (s != null)
+                    {
+                        string kor = ItemCatalog.Get(s.Held)?.Kor ?? s.Held;
+                        var props = new[] { new Prop { Kind = PropKind.Held, A = C.Culprit, Item = s.Held, Room = s.Room, T0 = s.T0, T1 = s.T1 } };
+                        var p = NewPlate(C, "talk:" + w + ":means:" + C.Culprit, PlateKind.Witness, PlateRole.Link, true, $"{G(w)}이(가) 본 것", $"{ClockFmt.Anchor(s.T0)}, {S.RoomName(s.Room)}. {G(C.Culprit)}의 손에 {kor} — {G(w)}", s.Room, s.T0, s.T1, props);
+                        p.Witness = w; p.Seen = C.Culprit; p.Title = LineBank.FixParticles(p.Title); p.Face = LineBank.FixParticles(p.Face);
+                        p.Back = LineBank.FixParticles($"그 무렵 {G(C.Culprit)}은(는) {kor}을(를) 들고 있었다."); cands.Add(p); heldShown = true;
+                    }
+                }
+                if (!cands.Any(p => p.Props.Any(x => x.Kind == PropKind.Bloodied && x.A == C.Culprit)))
+                {
+                    var s = k.Sightings.Where(x => x.Target == C.Culprit && x.IdConf >= 0.6f && x.Disguise == null && x.Bloody && x.T0 >= C.KillClock - 5 && x.T0 <= C.KillClock + 240)
+                                       .OrderBy(x => x.T0).FirstOrDefault();
+                    if (s != null)
+                    {
+                        var props = new[] { new Prop { Kind = PropKind.Bloodied, A = C.Culprit, Room = s.Room, T0 = s.T0, T1 = s.T1 } };
+                        var p = NewPlate(C, "talk:" + w + ":blood:" + C.Culprit, PlateKind.Witness, PlateRole.Link, true, $"{G(w)}이(가) 본 것", $"{ClockFmt.Anchor(s.T0)}, {S.RoomName(s.Room)}. {G(C.Culprit)}의 옷에 붉은 얼룩 — {G(w)}", s.Room, s.T0, s.T1, props);
+                        p.Witness = w; p.Seen = C.Culprit; p.Title = LineBank.FixParticles(p.Title); p.Face = LineBank.FixParticles(p.Face);
+                        p.Back = LineBank.FixParticles($"{G(C.Culprit)}의 옷에 묻은 건 피였다 — 공격한 뒤였다."); cands.Add(p);
+                    }
+                }
+            }
         }
 
         // ---- the culprit's alibi as recorded (FalseAlibi, the boss fake): a true sighting that reads as "elsewhere at the time"
@@ -448,7 +488,7 @@ namespace BL23.Sim
             bool Take(Plate p, string why)
             {
                 if (p == null || all.Contains(p) || all.Any(x => x.Root == p.Root)) return false;
-                if (p.Kind == PlateKind.Witness && Wit() >= WitnessCap) { d.Log.Add("witness cap: " + p.Root + " (" + why + ")"); return false; }
+                if (p.Kind == PlateKind.Witness && Wit() >= WitnessCap && why != "link") { d.Log.Add("witness cap: " + p.Root + " (" + why + ")"); return false; }
                 all.Add(p); return true;
             }
             // fakes first (the boss first): a route, a user, ≤2 pointing at one person
@@ -470,7 +510,8 @@ namespace BL23.Sim
                 if (!f.Routes.Any(r => all.Any(x => "pl:" + x.Id == r)))
                     Take(trues.Where(t => f.Routes.Contains("pl:" + t.Id)).OrderBy(t => t.Kind == PlateKind.Witness ? 1 : 0).ThenBy(t => t.Root, StringComparer.Ordinal).FirstOrDefault(), "route");
             // one culprit link (a witness or a trace the culprit left on the way), one clear, one sound
-            Take(trues.Where(p => p.Role == PlateRole.Link && p.Kind == PlateKind.Witness).OrderBy(p => Math.Abs(p.T0 - C.KillClock)).ThenBy(p => p.Root, StringComparer.Ordinal).FirstOrDefault(), "link");
+            // fair play: up to two witnessed ties to the culprit (at the scene, the weapon in hand, blood after) — past the witness cap
+            foreach (var t in trues.Where(p => p.Role == PlateRole.Link && p.Kind == PlateKind.Witness && p.Seen == C.Culprit).OrderBy(p => p.Props.Any(x => x.Kind == PropKind.AtPlace) ? 0 : 1).ThenBy(p => Math.Abs(p.T0 - C.KillClock)).ThenBy(p => p.Root, StringComparer.Ordinal).Take(2)) Take(t, "link");
             Take(trues.Where(p => p.Role == PlateRole.Clear).OrderBy(p => p.Root, StringComparer.Ordinal).FirstOrDefault(), "clear");
             Take(trues.Where(p => p.Role == PlateRole.Confirm).OrderBy(p => Math.Abs(p.T0 - C.KillClock)).ThenBy(p => p.Root, StringComparer.Ordinal).FirstOrDefault(), "sound");
             // the scene: struggle marks and blood where it happened, the culprit's own traces on the way, the weapon, the furniture

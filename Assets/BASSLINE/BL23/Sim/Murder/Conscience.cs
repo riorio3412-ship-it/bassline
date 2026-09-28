@@ -24,6 +24,8 @@ namespace BL23.Sim
         public static bool Enabled = true;
         /// <summary>"Nobody came here to kill."</summary>
         public const float Start = 0.32f;
+        /// <summary>The loop's first chapter: each of the house's first two steps not yet taken ("no reason yet").</summary>
+        public const float Unpushed = 0.15f;
         /// <summary>Took the pact at the chapter's first table — until the chapter's first death breaks it (the renewed pact
         /// of a later chapter holds half as much).</summary>
         public const float PactBonus = 0.1f;
@@ -46,6 +48,13 @@ namespace BL23.Sim
             if (!Enabled) return 0;
             float w = Start;
             if (TookPact(S, id) && !PactBroken(S)) w += S.Chapter <= 1 ? PactBonus : PactBonus * 0.5f;
+            // the loop's first chapter, before anyone has died: until the house has given its first two reasons (the token, the
+            // envelopes — taken or passed over), nobody has one of their own
+            if (S.Chapter <= 1 && !S.Flags.ContainsKey($"firstdeath:{S.Loop}"))
+            {
+                int passed = HousePush.Enabled ? HousePush.Next(S) : 2;
+                if (passed < 1) w += Unpushed; if (passed < 2) w += Unpushed;
+            }
             w -= Worn(S, null) + Worn(S, id);
             return Math.Max(Floor, w);
         }
