@@ -272,7 +272,8 @@ def main():
         scene.render.resolution_y = c["res"][1]
         scene.render.resolution_percentage = 100
         if lights:
-            # light distance / power scale with the framing so exposure is consistent
+            # identical camera-relative rig (distance, size, power) for every view,
+            # so BEFORE and AFTER renders of a view are lit exactly the same
             dist = 1.6
             key, fill, rim = lights
             key.data.energy, fill.data.energy, rim.data.energy = 11.0, 4.0, 4.0

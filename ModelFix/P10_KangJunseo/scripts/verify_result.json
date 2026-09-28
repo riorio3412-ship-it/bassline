@@ -1,0 +1,133 @@
+{
+ "orig_size": 5156976,
+ "fixed_size": 5156388,
+ "geometry_buffers_byte_identical": true,
+ "gltf_json_identical_except_buffer_layout": true,
+ "all_images_same_resolution_and_jpeg": true,
+ "changed_images": [
+  {
+   "image": 8,
+   "name": "강준서+2차+수정본_tripo_part_8_basecolor.jpg",
+   "size": [
+    512,
+    512
+   ],
+   "bytes_before": 67567,
+   "bytes_after": 66933
+  },
+  {
+   "image": 10,
+   "name": "강준서+2차+수정본_tripo_part_10_basecolor.jpg",
+   "size": [
+    512,
+    512
+   ],
+   "bytes_before": 56739,
+   "bytes_after": 56629
+  },
+  {
+   "image": 14,
+   "name": "강준서+2차+수정본_tripo_part_14_basecolor.jpg",
+   "size": [
+    256,
+    256
+   ],
+   "bytes_before": 25090,
+   "bytes_after": 26066
+  },
+  {
+   "image": 19,
+   "name": "강준서+2차+수정본_tripo_part_19_basecolor.jpg",
+   "size": [
+    256,
+    256
+   ],
+   "bytes_before": 13910,
+   "bytes_after": 13201
+  },
+  {
+   "image": 21,
+   "name": "강준서+2차+수정본_tripo_part_21_basecolor.jpg",
+   "size": [
+    256,
+    256
+   ],
+   "bytes_before": 18112,
+   "bytes_after": 17997
+  }
+ ],
+ "pygltflib": {
+  "meshes": 29,
+  "materials": 29,
+  "images": 29,
+  "textures": 29,
+  "nodes": 30
+ },
+ "trimesh_orig": {
+  "triangles": 93572,
+  "vertices": 57112,
+  "materials_with_texture": true,
+  "bounds": [
+   [
+    -0.27434,
+    0.0,
+    -0.1232
+   ],
+   [
+    0.27434,
+    0.97842,
+    0.1232
+   ]
+  ]
+ },
+ "trimesh_fixed": {
+  "triangles": 93572,
+  "vertices": 57112,
+  "materials_with_texture": true,
+  "bounds": [
+   [
+    -0.27434,
+    0.0,
+    -0.1232
+   ],
+   [
+    0.27434,
+    0.97842,
+    0.1232
+   ]
+  ]
+ },
+ "blender_reimport": {
+  "mesh_objects": 29,
+  "triangles": 93572,
+  "vertices_merged_by_importer": 57112,
+  "materials": 29,
+  "materials_without_image": [],
+  "image_sizes": [
+   [
+    64,
+    64
+   ],
+   [
+    128,
+    128
+   ],
+   [
+    256,
+    256
+   ],
+   [
+    512,
+    512
+   ],
+   [
+    1024,
+    1024
+   ],
+   [
+    2048,
+    2048
+   ]
+  ]
+ }
+}
