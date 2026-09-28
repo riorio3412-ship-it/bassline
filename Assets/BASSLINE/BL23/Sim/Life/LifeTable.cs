@@ -16,7 +16,7 @@ namespace BL23.Sim
     /// </summary>
     public sealed partial class Simulation
     {
-        static readonly string[] TopicOrder = { "death", "verdict", "rule", "hunger", "buddy", "conflict", "event", "absent", "rumour", "habit", "food" };
+        static readonly string[] TopicOrder = { "death", "verdict", "rule", "hunger", "buddy", "conflict", "event", "absent", "rumour", "habit", "food", "pact" };
 
         /// <summary>Presentation: 민혁 is at the table with these diners. The staged table scene, or null (already talked this meal).</summary>
         public LifeStage LifeTable(List<string> diners, string meal)
@@ -60,6 +60,10 @@ namespace BL23.Sim
             string Has(string id) => diners.Contains(id) ? id : null;
             string By(Func<string, double> score) => diners.OrderByDescending(score).ThenBy(x => x, StringComparer.Ordinal).FirstOrDefault();
             var found = new List<(string kind, string subject, string owner)>();
+            // 0 pact: the first shared table of a loop, before anyone has died — they came for a wish, nobody came to kill
+            // (the premise, owner 2026-09-28). 서윤 says it first; whoever is at the table takes it (Premise.cs reads it).
+            if (!S.Flags.ContainsKey($"ltpact:{S.Loop}") && diners.Count >= 3 && !S.Incidents.Values.Any(i => i.Loop == S.Loop))
+                return ("pact", null, Has("P03") ?? Has("P05") ?? Has("P10") ?? Has("P12") ?? By(d => S.A(d).Def.P.Morality));
             // 1 death: the first shared meal after a confirmed death
             var dead = S.Incidents.Values.Where(i => i.Loop == S.Loop && i.Confirmed && !S.Flags.ContainsKey("ltdeath:" + i.Victim)).OrderBy(i => i.ConfirmClock).FirstOrDefault();
             if (dead != null) found.Add(("death", dead.Victim, By(d => S.R(d, dead.Victim).Attach + S.R(d, dead.Victim).Like)));
@@ -136,6 +140,7 @@ namespace BL23.Sim
                 case "absent": run.Ctx["t"] = subject; break;
                 case "rumour": { var r = RumourOf(owner, subject); if (r != null) { run.Ctx["rumour"] = RumourText(r.Value, owner); run.Ctx["t"] = r.Value.a; run.Ctx["rid"] = subject; } break; }
                 case "habit": run.Ctx["t"] = owner; break;
+                case "pact": run.Ctx["n"] = KorCount(S.Survivors); break;
             }
             var beat = new LBeat { Id = "start" }; sc.Beats.Add(beat);
             // the opener
@@ -153,7 +158,7 @@ namespace BL23.Sim
             if (kind == "rumour" && run.Ctx.TryGetValue("t", out var subj) && diners.Contains(subj) && subj != owner) beat.Lines.Add(KeyLine(subj, owner, "rumour_deny", Emotion.Angry));
             // 2–3 reactors, those with a tie to the opener first (their pair lines land)
             var used = new HashSet<string>(beat.Lines.Select(l => l.Who));
-            var reactors = diners.Where(d => !used.Contains(d)).OrderByDescending(d => (CastWeb.TieBetween(d, owner) != null ? 2 : 0) + LineBank.Variants(d, $"tt_{(kind == "envelope" ? "envelope" : kind)}_re@{owner}") + LR.F()).ThenBy(d => d, StringComparer.Ordinal).Take(kind == "food" || kind == "habit" ? 2 : 3).ToList();
+            var reactors = diners.Where(d => !used.Contains(d)).OrderByDescending(d => (CastWeb.TieBetween(d, owner) != null ? 2 : 0) + LineBank.Variants(d, $"tt_{(kind == "envelope" ? "envelope" : kind)}_re@{owner}") + LR.F()).ThenBy(d => d, StringComparer.Ordinal).Take(kind == "food" || kind == "habit" ? 2 : kind == "pact" ? 5 : 3).ToList();
             foreach (var r in reactors) beat.Lines.Add(KeyLine(r, owner, $"tt_{(kind == "envelope" ? "envelope" : kind)}_re", Emotion.Neutral));
             beat.Lines.RemoveAll(l => l == null);
             if (withPlayer) foreach (var o in TableOptions(kind, owner, a, b, diners, run)) beat.Opts.Add(o);
@@ -173,6 +178,10 @@ namespace BL23.Sim
                     S.Flags[$"lthabit:{S.Loop}:{owner}"] = S.Clock;
                     Foreshadow.HabitShared(this, owner, "table:" + meal, diners.Concat(withPlayer ? new[] { Cast.Player } : new string[0]));
                     if (withPlayer) PK.Facts.Add("habit:" + owner);
+                    break;
+                case "pact":
+                    S.Flags[$"ltpact:{S.Loop}"] = S.Clock;
+                    foreach (var d in diners.Concat(withPlayer ? new[] { Cast.Player } : new string[0])) S.Flags[$"pact:{S.Loop}:{d}"] = S.Clock;
                     break;
                 case "rumour": if (run.Ctx.TryGetValue("rid", out var rid)) { var rr = RumourOf(owner, rid); if (rr != null) foreach (var d in diners.Concat(withPlayer ? new[] { Cast.Player } : new string[0])) RumourLearn(d, rr.Value, owner); } break;
             }
@@ -194,7 +203,7 @@ namespace BL23.Sim
             {
                 case "death": return "빈자리"; case "verdict": return "심판 다음 날"; case "rule": return "새 규칙"; case "envelope": return "봉투";
                 case "hunger": return "줄어든 식사"; case "buddy": return "짝"; case "conflict": return "어제의 말다툼"; case "event": return "오늘의 모임";
-                case "absent": return "빈 의자"; case "rumour": return "소문"; case "habit": return "버릇"; default: return "오늘의 식탁";
+                case "absent": return "빈 의자"; case "rumour": return "소문"; case "habit": return "버릇"; case "pact": return "약속"; default: return "오늘의 식탁";
             }
         }
 
@@ -257,6 +266,11 @@ namespace BL23.Sim
                     list.Add(Opt("직접 본 사람 있어요?").Do(diners.Select(d => F(d, "me", respect: 0.015f)).ToArray()));
                     { string subj = run.Ctx.TryGetValue("t", out var t0) ? t0 : null; var o3 = Opt("없는 사람 얘기는 그만해요.").Do(F(O, "me", like: -0.02f)); if (subj != null) o3.Do(F(subj, "me", trust: 0.04f, like: 0.02f, mem: "소문 앞에서 내 편을 들어 줬다")); list.Add(o3); }
                     break;
+                case "pact":
+                    list.Add(Opt("약속해요. 저부터요.").Do(F(O, "me", trust: 0.04f, attach: 0.02f, mem: "약속에 제일 먼저 손을 들었다")).Do(diners.Where(d => d != O).Select(d => F(d, "me", like: 0.01f, trust: 0.01f)).ToArray()));
+                    list.Add(Opt("약속만으로는 모자라요. 밤에는 혼자 다니지 마요.").Do(diners.Select(d => F(d, "me", respect: 0.02f)).ToArray()));
+                    list.Add(Opt("말없이 잔을 든다").Act().Do(F(O, "me", like: 0.02f)));
+                    break;
                 case "habit":
                     list.Add(Opt("그거 전혀 몰랐어요.").Do(F(O, "me", like: 0.02f)));
                     list.Add(Opt("저도 비슷한 버릇 있어요.").Do(F(O, "me", like: 0.03f, attach: 0.01f)).Mem("same_habit"));
@@ -279,6 +293,7 @@ namespace BL23.Sim
             {
                 if (kind == "conflict" && run.Ctx.TryGetValue("a", out var a) && run.Ctx.TryGetValue("b", out var b)) { Relations.Change(S, a, b, grudge: 0.02f); Relations.Change(S, b, a, grudge: 0.02f); }
                 if (kind == "death") foreach (var p in diners) foreach (var q in diners) if (p != q) Relations.Change(S, p, q, attach: 0.01f);
+                if (kind == "pact") foreach (var p in diners) foreach (var q in diners) if (p != q) Relations.Change(S, p, q, trust: 0.01f);
                 if (kind == "buddy") for (int i = 0; i + 1 < diners.Count; i += 2) { S.R(diners[i], diners[i + 1]).Tags.Add("watch"); S.R(diners[i + 1], diners[i]).Tags.Add("watch"); }
             }
         }
