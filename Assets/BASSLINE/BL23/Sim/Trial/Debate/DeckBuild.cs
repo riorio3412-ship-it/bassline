@@ -147,7 +147,10 @@ namespace BL23.Sim
             foreach (var it in S.Items.Values.OrderBy(i => i.Id, StringComparer.Ordinal))
             {
                 bool weapon = it.Id == C.Inc.Weapon, decoy = it.Surface.Contains("smeared") && it.Room >= 0 && (it.Room == C.FoundRoom || it.Room == C.KillRoom), plant = planted.Contains(it.Id);
-                if (!weapon && !decoy && !plant) continue;
+                // the cup a dose went into (poison, a sedative): left where it was drunk from
+                bool cup = !weapon && it.Type == "Cup" && it.Room >= 0 && (it.Room == C.KillRoom || it.Room == C.FoundRoom) && it.Surface.Any(x => x.StartsWith("residue:", StringComparison.Ordinal));
+                if (!weapon && !decoy && !plant && !cup) continue;
+                if (cup && cands.Any(p => p.Root.StartsWith("item:", StringComparison.Ordinal) && p.Title == "남은 잔")) continue;   // one cup is enough
                 if (it.Holder != null || it.Hidden) continue;   // not where anyone could photograph it
                 var def = it.Def; string kor = it.Kor;
                 var props = new List<Prop> { new Prop { Kind = PropKind.ItemAt, A = it.Owner, Item = it.Type, Room = it.Room, Value = plant ? "moved" : "found" } };
@@ -164,6 +167,12 @@ namespace BL23.Sim
                     props.Add(new Prop { Kind = PropKind.Culprit, A = it.Owner, B = C.VictimId, Value = "planted" });
                     var p = NewPlate(C, "item:" + it.Id, PlateKind.Object, PlateRole.Frame, false, LineBank.FixParticles($"{G(it.Owner)}의 {kor}"), $"{G(it.Owner)}의 {kor}. {S.RoomName(it.Room)}에 떨어져 있다.", it.Room, -1, -1, props);
                     p.Points = it.Owner; p.Owner = it.Owner; p.Origin = "위장"; p.Back = LineBank.FixParticles($"{G(it.Owner)}은(는) 이걸 잃어버렸을 뿐이다 — 누군가 여기 가져다 놓았다."); cands.Add(p);
+                }
+                else if (cup)
+                {
+                    string smell = it.Surface.Contains("residue:bitter") ? "쓴 냄새" : "달큰한 약 냄새";
+                    var p = NewPlate(C, "item:" + it.Id, PlateKind.Object, PlateRole.Link, true, "남은 잔", $"잔. 바닥에 {smell}가 남아 있다. ({S.RoomName(it.Room)})", it.Room, -1, -1, props);
+                    p.Back = LineBank.FixParticles($"{G(C.VictimId)}은(는) 쓰러지기 전에 이 잔으로 무언가를 마셨다 — 탄 것은 그보다 앞서다."); cands.Add(p);
                 }
                 else if (weapon)
                 {
@@ -241,6 +250,20 @@ namespace BL23.Sim
                         var p = NewPlate(C, "talk:" + w + ":means:" + C.Culprit, PlateKind.Witness, PlateRole.Link, true, $"{G(w)}이(가) 본 것", $"{ClockFmt.Anchor(s.T0)}, {S.RoomName(s.Room)}. {G(C.Culprit)}의 손에 {kor} — {G(w)}", s.Room, s.T0, s.T1, props);
                         p.Witness = w; p.Seen = C.Culprit; p.Title = LineBank.FixParticles(p.Title); p.Face = LineBank.FixParticles(p.Face);
                         p.Back = LineBank.FixParticles($"그 무렵 {G(C.Culprit)}은(는) {kor}을(를) 들고 있었다."); cands.Add(p); heldShown = true;
+                    }
+                }
+                // poison or a sedative: someone saw the culprit's hand near the victim's cup (the dose, not the death — the alibi
+                // for the moment they collapsed does not cover it)
+                if (!cands.Any(p => p.Root.StartsWith("talk:", StringComparison.Ordinal) && p.Root.EndsWith(":dose:" + C.Culprit, StringComparison.Ordinal)))
+                {
+                    var e = S.Ledger.Where(x => x.Type == "SawNearCup" && x.Actor == w && x.Target == C.Culprit && x.Data == C.VictimId && x.Clock <= C.FoundClock)
+                                    .OrderBy(x => Math.Abs(x.Clock - C.KillClock)).FirstOrDefault();
+                    if (e != null)
+                    {
+                        var props = new[] { new Prop { Kind = PropKind.AtPlace, A = C.Culprit, Room = e.Room, T0 = e.Clock, T1 = e.Clock } };
+                        var p = NewPlate(C, "talk:" + w + ":dose:" + C.Culprit, PlateKind.Witness, PlateRole.Link, true, $"{G(w)}이(가) 본 것", $"{ClockFmt.Anchor(e.Clock)}, {S.RoomName(e.Room)}. {G(C.Culprit)}의 손이 {G(C.VictimId)}의 잔 가까이 — {G(w)}", e.Room, e.Clock, e.Clock, props);
+                        p.Witness = w; p.Seen = C.Culprit; p.Title = LineBank.FixParticles(p.Title); p.Face = LineBank.FixParticles(p.Face);
+                        p.Back = LineBank.FixParticles($"{G(C.Culprit)}은(는) 그때 {G(C.VictimId)}의 잔에 무언가를 탔다."); cands.Add(p);
                     }
                 }
                 if (!cands.Any(p => p.Props.Any(x => x.Kind == PropKind.Bloodied && x.A == C.Culprit)))

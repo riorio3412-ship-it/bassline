@@ -354,7 +354,18 @@ namespace BL23.Sim
             if (f == "hint" || f == "contract" || f == "secret") { if (npc != null) PK.Facts.Add(f + ":" + npc); return; }
             if (f.StartsWith("knot:")) { CastWeb.RevealKnot(S, f.Substring(5), Cast.Player); return; }
             if (f.StartsWith("flag:")) { S.Flags[f.Substring(5)] = S.Day; return; }
-            if (f.StartsWith("mend:")) { foreach (var id in f.Substring(5).Split(',')) Conscience.Mend(S, id, 0.03f, "pact-remind"); return; }
+            // the wall (Conscience): "mend:P03,P10" (0.03 each) or "mend:P03=0.06"; "erode:P03=0.02"
+            if (f.StartsWith("mend:") || f.StartsWith("erode:"))
+            {
+                bool mend = f[0] == 'm'; string body = f.Substring(mend ? 5 : 6);
+                foreach (var part in body.Split(','))
+                {
+                    int eq = part.IndexOf('='); string id = eq > 0 ? part.Substring(0, eq) : part;
+                    float amt = eq > 0 && float.TryParse(part.Substring(eq + 1), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : 0.03f;
+                    if (mend) Conscience.Mend(S, id, amt, "life"); else Conscience.Erode(S, id, amt, "life");
+                }
+                return;
+            }
             PK.Facts.Add(f);
         }
 

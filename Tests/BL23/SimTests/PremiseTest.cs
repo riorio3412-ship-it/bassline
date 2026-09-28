@@ -80,6 +80,29 @@ public static partial class Program
                 Console.WriteLine($"-- {ClockFmt.DayHM(S.Clock)} L{S.Loop}C{S.Chapter} alive {S.Living.Count()} hunger {Hunger.Level(S)} push {HousePush.Next(S)} pact {(Conscience.PactBroken(S) ? "broken" : "kept")}");
                 Console.WriteLine("   wall/inhibit: " + string.Join(", ", walls));
             }
+            // someone comes to confide (HousePush → LifeDialogue "confide"): 민혁 hears them out and answers
+            if (S.Phase == Phase.Daily && S.Player != null && S.Player.Alive && m >= 8 * 60 && m <= 22 * 60 && m % 5 == 0)
+            {
+                var c = S.LivingNpcs.OrderBy(x => x.Id, StringComparer.Ordinal).FirstOrDefault(x => sim.LifeGoKind(x.Id) == "confide" && sim.CanTalk(x, out _));
+                if (c != null)
+                {
+                    var pos = sim.Snap(new P3(c.Pos.f, c.Pos.x + 0.9f, c.Pos.z)); sim.SetPlayerPose(pos, 0, false, false);
+                    Console.WriteLine($"   [{ClockFmt.DayHM(S.Clock)}] 속내 — {Who(c.Id)} (벽 {Conscience.Wall(S, c.Id):0.00})");
+                    sim.BeginTalk(c);
+                    try
+                    {
+                        foreach (var u in sim.Choose(c, "lifego", null)) { Console.WriteLine($"      {Who(u.Speaker)}: {u.Text}"); sim.Spoken(u); }
+                        for (int g = 0; g < 4; g++)
+                        {
+                            var picks = sim.Options(c).Where(x => x.Id == "lifepick").ToList(); if (picks.Count == 0) break;
+                            var pk = picks[rng.R(picks.Count)];
+                            foreach (var u in sim.Choose(c, "lifepick", pk.Arg)) { Console.WriteLine($"      {Who(u.Speaker)}: {u.Text}"); sim.Spoken(u); }
+                        }
+                    }
+                    finally { sim.EndTalk(c); }
+                    Console.WriteLine($"      → 벽 {Conscience.Wall(S, c.Id):0.00}");
+                }
+            }
             // 민혁 sits at breakfast and dinner, the way Session.CheckTableTalk stages it: once three are seated or eating
             string meal = m >= 7 * 60 && m < 10 * 60 ? "breakfast" : m >= 18 * 60 && m < 21 * 60 ? "dinner" : null;
             if (S.Phase == Phase.Daily && S.Player != null && S.Player.Alive && meal != null && m >= (meal == "breakfast" ? Simulation.MealStart[0] : Simulation.MealStart[2]) && !S.Flags.ContainsKey($"pttable:{S.Day}:{meal}"))

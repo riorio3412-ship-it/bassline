@@ -14,8 +14,9 @@ namespace BL23.Sim
     ///   3 두 번째 소원  the first to get away with it may wish once more, for someone else (love, loyalty)
     ///   4 정기 소등    the lights go out twice today: CH03 imposed (the dark, its "house-dark" moments)
     ///   5 저택의 인내   another room swallowed, less on the plates (Hunger, one level at once)
-    /// After the last step, every further quiet morning is 긴 침묵: the house presses on (strain, and the wall worn past zero
-    /// into their own restraint, Conscience.Floor) until someone breaks — a quiet chapter cannot stall the loop.
+    /// After the last step, every further quiet morning is 긴 침묵: the house presses on, each morning harder than the last
+    /// (strain, and the wall worn past zero into their own restraint, Conscience.Floor) until someone breaks — a quiet chapter
+    /// cannot stall the loop, however well 민혁 holds people together.
     /// Hunger keeps its own morning clock beside these. A death ends the ladder for the chapter; the next chapter picks it
     /// up where the house left off (the token is shown once a loop), sooner. No step orders anyone to kill — Yusti says so.
     /// </summary>
@@ -66,8 +67,9 @@ namespace BL23.Sim
                 S.Flags[$"pushsilence:{S.Loop}:{S.Chapter}"] = n;
                 S.Log("HousePush", Cast.Butler, data: "silence" + n);
                 sim.Announce("y_push_silence", null, "push:silence");
-                Conscience.Erode(S, null, 0.05f, "silence");
+                Conscience.Erode(S, null, 0.04f * n, "silence");   // each silent morning weighs more than the last
                 foreach (var a in S.LivingNpcs) { a.Needs.Stress = MathX.Clamp01(a.Needs.Stress + 0.05f); a.Needs.Anger = MathX.Clamp01(a.Needs.Anger + 0.03f); }
+                if (n == 1) Confide(sim, "silence");
                 return;
             }
             for (int i = Next(S); i < Ladder.Length; i++)
@@ -79,8 +81,22 @@ namespace BL23.Sim
                 S.Log("HousePush", Cast.Butler, data: st.Id);
                 S.Dev($"HOUSE PUSH {st.Id} ch{S.Chapter} h{h:0}");
                 st.Apply(sim);
+                if (st.Id == "sample" || st.Id == "bonus") Confide(sim, st.Id);
                 return;
             }
+        }
+
+        /// <summary>After a push, the two it shook hardest who trust 민혁 enough come to tell him (LifeDialogue "confide"): what he
+        /// says holds them back or loosens them. Those who already handed him their token are past it.</summary>
+        static void Confide(Simulation sim, string step)
+        {
+            var S = sim.S;
+            var who = S.LivingNpcs.Where(a => !S.Flags.ContainsKey($"gavesample:{S.Loop}:{a.Id}") && S.HasRel(a.Id, Cast.Player))
+                .Select(a => (a, r: S.R(a.Id, Cast.Player)))
+                .Where(x => x.r.Like >= 0.08f || x.r.Trust >= 0.15f || x.r.Attach >= 0.08f)
+                .OrderByDescending(x => x.a.Def.P.WishDesire + x.r.Like * 0.5f + x.r.Trust * 0.3f - Conscience.Wall(S, x.a.Id))
+                .ThenBy(x => x.a.Id, StringComparer.Ordinal).Take(2).Select(x => x.a.Id).ToList();
+            foreach (var id in who) { sim.LifePurpose(id, "confide", step); S.Log("Confide", id, Cast.Player, data: step); }
         }
 
         // ------------------------------------------------------------------ 1 견본: the wish is real

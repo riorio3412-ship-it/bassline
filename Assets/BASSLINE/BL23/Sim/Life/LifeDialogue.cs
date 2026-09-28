@@ -15,7 +15,7 @@ namespace BL23.Sim
     public sealed partial class Simulation
     {
         // ================================================================== purposes ("lifego")
-        static readonly string[] GoOrder = { "heart", "hang", "verdict", "grief", "gift", "rival", "jealous", "flirt", "rumour", "callback" };
+        static readonly string[] GoOrder = { "heart", "confide", "hang", "verdict", "grief", "gift", "rival", "jealous", "flirt", "rumour", "callback" };
 
         string GoPrefix(string npc) => "lifego:" + npc + "|";
 
@@ -77,6 +77,7 @@ namespace BL23.Sim
                 case "verdict": return "잠깐 걷자고 한다";
                 case "flirt": return "어쩐지 눈을 오래 맞춘다";
                 case "grief": return "조용히 곁에 선다";
+                case "confide": return "무언가 털어놓고 싶어 보인다";
                 default: return "할 말이 있어 보인다";
             }
         }
@@ -263,6 +264,24 @@ namespace BL23.Sim
             string V(string key) => VoiceRaw(npc, key, cas);
             switch (kind)
             {
+                case "confide":
+                    {
+                        // the house's push got to them (HousePush): they tell 민혁 what the wish's token does to them at night;
+                        // his answer holds them back (the wall mended) or, understanding too well, loosens it a little
+                        sc.Title = "속내";
+                        sc.Open(GL(npc, V("confide_open") ?? "…잠깐 얘기해도 돼요? 그 견본 말이에요. 자꾸 생각나요.", Emotion.Sad));
+                        var give = GO("그 견본, 저한테 맡겨요.", GL(npc, V("confide_give") ?? "…네. 맡길게요. 제가 들고 있으면 안 될 것 같아요.", Emotion.Sad))
+                                     .Do(GFx(npc, "me", trust: 0.05f, attach: 0.02f, mem: "견본을 맡아 줬다")).Know($"mend:{npc}=0.06;flag:gavesample:{S.Loop}:{npc}");
+                        give.LabelC = "그 견본, 나한테 맡겨.";
+                        var hope = GO("소원은 다른 방법으로 이뤄요. 같이 찾아요.", GL(npc, V("confide_hope") ?? "…다른 방법이 있다면요. 같이 찾아 줘요.", Emotion.Smile))
+                                     .Do(GFx(npc, "me", like: 0.03f, trust: 0.02f, mem: "소원을 같이 찾자고 했다")).Know($"mend:{npc}=0.04");
+                        hope.LabelC = "소원은 다른 방법으로 이루자. 같이 찾아.";
+                        var feel = GO("…그 마음, 저도 알 것 같아요.", GL(npc, V("confide_understood") ?? "…고마워요. 알아주는 사람이 있어서.", Emotion.Sad))
+                                     .Do(GFx(npc, "me", trust: 0.06f, attach: 0.03f, mem: "흔들리는 마음을 알아줬다")).Know($"erode:{npc}=0.02");
+                        feel.LabelC = "…그 마음, 나도 알 것 같아.";
+                        sc.Choice(give, hope, feel);
+                        break;
+                    }
                 case "gift":
                     {
                         string type = arg; var def = ItemCatalog.Get(type); if (def == null) return null;
