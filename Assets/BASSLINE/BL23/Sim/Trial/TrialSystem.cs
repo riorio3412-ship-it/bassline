@@ -73,6 +73,7 @@ namespace BL23.Sim
             foreach (var id in T.Participants.Where(x => x != Cast.Player)) { Testimony.UpdateSuspicion(sim, S.A(id)); T.Stances[id] = new TrialStance { Actor = id }; }
             sim.SetPhase(Phase.Trial);
             S.Log("TrialBegin", null, data: $"participants={T.Participants.Count} dead={string.Join(",", T.Dead)}");
+            if (DebateEligible(sim, T, out var dinc)) { DebateBegin(sim, T, dinc); return; }   // the debate 심판 (Sim/Trial/Debate)
             // Yusti, from the judge's seat, runs only the procedure: opening, reminders of the chapter rule, the vote and the verdict
             Yusti(sim, T, "y_trial_open", "open");
             if (S.RuleActive("CH19")) Yusti(sim, T, "y_trial_rule", "rule", new Dictionary<string, string> { { "name", "시간차 공지" }, { "desc", "같은 공지가 두 번, 서로 다른 시각에 전해졌습니다. 언제 들으셨는지도 함께 말씀해 주십시오." } });
@@ -127,6 +128,7 @@ namespace BL23.Sim
 
         static void Direct(Simulation sim, TrialState T)
         {
+            if (T.Debate != null) { T.Beat++; DebateDirect(sim, T); return; }
             var S = sim.S; var rng = S.R(Stream.Trial); T.Beat++;
             if (T.Stage == "Vote") { RunVote(sim, T); return; }
             if (T.Stage == "Done") { T.Finished = true; return; }
@@ -578,6 +580,7 @@ namespace BL23.Sim
 
         public static Result PlayerContradict(Simulation sim, string claimId, string evidenceId)
         {
+            if (sim.S.Trial?.Debate != null) return DebateShow(sim, claimId, evidenceId);
             var S = sim.S; var T = S.Trial; var c = T?.Claims.FirstOrDefault(x => x.Id == claimId); var ev = TrialGames.BulletEvidence(S, evidenceId);
             if (c == null || ev == null) return new Result { R = LogicResult.Irrelevant, Text = "잘못 고른 것 같다" };
             LogicVerdict best = null; foreach (var p in ev.Props) { var v = Logic.Check(S, c.Prop, p, ev.Direct, ev.Root); if (best == null || (int)Rank(v.Result) > (int)Rank(best.Result)) best = v; }
@@ -604,6 +607,7 @@ namespace BL23.Sim
 
         public static Result PlayerSupport(Simulation sim, string claimId, string evidenceId)
         {
+            if (sim.S.Trial?.Debate != null) return DebateShow(sim, claimId, evidenceId);
             var S = sim.S; var T = S.Trial; var c = T?.Claims.FirstOrDefault(x => x.Id == claimId); var ev = TrialGames.BulletEvidence(S, evidenceId);
             if (c == null || ev == null) return new Result();
             var v = ev.Props.Select(p => Logic.Check(S, c.Prop, p, ev.Direct, ev.Root)).FirstOrDefault(x => x.Result == LogicResult.Support);
@@ -615,6 +619,7 @@ namespace BL23.Sim
 
         public static void PlayerAskSource(Simulation sim, string claimId)
         {
+            if (sim.S.Trial?.Debate != null) { DebateAsk(sim, claimId); return; }
             var S = sim.S; var T = S.Trial; var c = T?.Claims.FirstOrDefault(x => x.Id == claimId); if (c == null) return;
             var sp = S.A(c.Speaker); if (sp == null || sp.IsPlayer) return;
             if (T.Mode != TrialMode.TM03_Witness) Mode(T, TrialMode.TM03_Witness, "집중 심문: " + Cast.GivenOf(sp.Id));
@@ -639,6 +644,7 @@ namespace BL23.Sim
         /// "@player" → against the open claims accusing the player and their premises; null → every open claim (legacy/autopilot).</summary>
         public static Result PlayerPresent(Simulation sim, string evidenceId, string target = null)
         {
+            if (sim.S.Trial?.Debate != null) return DebatePresentCard(sim, evidenceId);
             var S = sim.S; var T = S.Trial; var ev = S.K(Cast.Player).Evidence.FirstOrDefault(e => e.Id == evidenceId && !e.Hidden); if (T == null || ev == null) return new Result();
             var view = CaseBoard.Describe(sim, ev);
             Line(T, sim, Cast.Player, "p_present", null, new Dictionary<string, string> { { "item", view.Title } });
@@ -673,6 +679,7 @@ namespace BL23.Sim
 
         public static void PlayerAccuse(Simulation sim, string target)
         {
+            if (sim.S.Trial?.Debate != null) { DebateAccuse(sim, target); return; }
             var S = sim.S; var T = S.Trial; if (T == null) return;
             T.PlayerAccused = target;
             var c = new TrialClaim { Id = "c" + (T.Claims.Count + 1), Speaker = Cast.Player, Prop = new Prop { Kind = PropKind.Culprit, A = target, B = TargetIncident(S)?.Victim }, Key = "p_accuse", Topic = "culprit", Player = true, Accused = target, Beat = T.Beats.Count };
@@ -753,6 +760,7 @@ namespace BL23.Sim
         // ------------------------------------------------------------------ headless (tests / observe mode)
         public static void RunHeadless(Simulation sim, bool smartPlayer)
         {
+            if (sim.S.Trial?.Debate != null) { DebateHeadless(sim, smartPlayer ? "smart" : "naive"); return; }
             var S = sim.S; int guard = 0;
             while (S.Trial != null && !S.Trial.Finished && guard++ < 600)
             {

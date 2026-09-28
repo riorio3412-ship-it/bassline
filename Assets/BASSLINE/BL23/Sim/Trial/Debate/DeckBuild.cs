@@ -84,7 +84,7 @@ namespace BL23.Sim
             if (S.Player != null) SetPieces.BodyNotes(C.Sim, S.Player, v, 1f, rng, lines, props);
             if (v.Body.PoisonBy != null && main == null) wound = "입술과 손끝이 푸르다";
             string face = $"{S.RoomName(C.FoundRoom)}, {G(v.Id)}. {wound}. {ClockFmt.Anchor(C.FoundClock)} 발견.";
-            var p = NewPlate(C, "body:" + v.Id, PlateKind.Body, PlateRole.Body, true, G(v.Id), face, C.FoundRoom, C.FoundClock, C.FoundClock, props);
+            var p = NewPlate(C, "body:" + v.Id, PlateKind.Body, PlateRole.Body, true, G(v.Id) + "의 시신", face, C.FoundRoom, C.FoundClock, C.FoundClock, props);
             p.Back = lines.Select(Clean).FirstOrDefault(l => l != null && (l.Contains("즉사") || l.Contains("따뜻") || l.Contains("차갑") || l.Contains("손가락") || l.Contains("자국") || l.Contains("멍"))) ?? $"상처는 {wound}.";
             p.Owner = null; cands.Add(p);
         }
@@ -289,7 +289,7 @@ namespace BL23.Sim
                 }
         }
 
-        static bool IsAlarm(SoundKind k) => k == SoundKind.Scream || k == SoundKind.Struggle || k == SoundKind.Strike || k == SoundKind.Crash || k == SoundKind.Fall || k == SoundKind.GlassBreak || k == SoundKind.Gunshot || k == SoundKind.Splash || k == SoundKind.Scrape;
+        internal static bool IsAlarm(SoundKind k) => k == SoundKind.Scream || k == SoundKind.Struggle || k == SoundKind.Strike || k == SoundKind.Crash || k == SoundKind.Fall || k == SoundKind.GlassBreak || k == SoundKind.Gunshot || k == SoundKind.Splash || k == SoundKind.Scrape;
         static string Trim(string s, int n) => string.IsNullOrEmpty(s) ? "흔적" : s.Length <= n ? s : s.Substring(0, n);
         internal static string NoteOf(string note, string key)
         {
@@ -303,7 +303,7 @@ namespace BL23.Sim
         {
             var S = C.S; int n = 0; string V = G(C.VictimId);
             DeckClaim Add(int layer, Axis axis, string text, Prop presented, Prop actual, string holder, string trick)
-            { var c = new DeckClaim { Id = "c" + (++n), Layer = layer, Axis = axis, Text = LineBank.FixParticles(text), Presented = presented, Actual = actual, Holder = holder, Trick = trick }; d.Claims.Add(c); return c; }
+            { var c = new DeckClaim { Id = "k" + (++n), Layer = layer, Axis = axis, Text = LineBank.FixParticles(text), Presented = presented, Actual = actual, Holder = holder, Trick = trick }; d.Claims.Add(c); return c; }
             // L1: what the scene says at first sight (the trick's false fact)
             var msg = cands.FirstOrDefault(p => p.Role == PlateRole.Frame && p.Root.StartsWith("trace:"));
             if (msg != null)
@@ -442,7 +442,7 @@ namespace BL23.Sim
         static void Select(CaseFacts C, CaseDeck d, List<Plate> cands)
         {
             var S = C.S;
-            const int WitnessCap = 3;
+            const int WitnessCap = 4;
             var all = new List<Plate>();
             int Wit() => all.Count(p => p.Kind == PlateKind.Witness);
             bool Take(Plate p, string why)
@@ -461,7 +461,7 @@ namespace BL23.Sim
                 Take(f, "fake");
             }
             var trues = cands.Where(p => p.True).ToList();
-            int target = 10;
+            int target = 12;
             // body; the L1 breakers (hinge, confirm); plates that turn the admitted fakes
             Take(trues.FirstOrDefault(p => p.Kind == PlateKind.Body), "body");
             var l1 = new HashSet<string>(d.Claims.Where(c => c.Layer == 1).Select(c => c.Id));
@@ -519,7 +519,7 @@ namespace BL23.Sim
             var l1 = d.Claims.Where(c => c.Layer == 1 && c.Truth != "true").Select(c => c.Id).ToList();
             foreach (var c in l1) if (!d.Plates.Any(p => p.True && p.Breaks.Contains(c))) d.Log.Add("claim unbreakable by a plate: " + c);
             foreach (var f in d.Plates.Where(p => !p.True)) if (f.Users.Count == 0 || f.Routes.Count == 0) d.Log.Add("fake without user/route: " + f.Root);
-            if (d.Plates.Count(p => p.Kind == PlateKind.Witness) > 3) d.Log.Add("too many witness plates");
+            if (d.Plates.Count(p => p.Kind == PlateKind.Witness) > 4) d.Log.Add("too many witness plates");
         }
     }
 }

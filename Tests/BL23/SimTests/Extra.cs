@@ -28,6 +28,7 @@ public static partial class Program
         if (mode == "furnknow") return FurnitureKnowledgeTest(args); // FurnitureKnowledgeTest.cs: one furniture change → fact / sight / hearing / later notice, save/load
         if (mode == "deckdump") return DeckDump(args);     // DebateDump.cs: the 은판 deck of the first 심판
         if (mode == "deckgate") return DeckGate(args);     // DebateDump.cs: decks over several seeds
+        if (mode == "debate") return DebateRun(args);      // DebateDump.cs: the debate 심판 played headless, as a transcript
         Console.WriteLine("unknown mode " + mode); return 1;
     }
 

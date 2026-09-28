@@ -86,7 +86,8 @@ namespace BL23.Sim
         }
         static bool RieulBatchim(string word) { char c = word[word.Length - 1]; return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 == 8; }
 
-        static readonly System.Text.RegularExpressions.Regex _pair = new System.Text.RegularExpressions.Regex(@"([가-힣A-Za-z0-9]+)(은\(는\)|는\(은\)|이\(가\)|가\(이\)|을\(를\)|를\(을\)|와\(과\)|과\(와\)|\(으\)로|이\(야\))");
+        // a closing quote or bracket may sit between the word and its particle ("「쓸린 자국」을(를)" → "「쓸린 자국」을")
+        static readonly System.Text.RegularExpressions.Regex _pair = new System.Text.RegularExpressions.Regex(@"([가-힣A-Za-z0-9]+)([」』”’\)\]]?)(은\(는\)|는\(은\)|이\(가\)|가\(이\)|을\(를\)|를\(을\)|와\(과\)|과\(와\)|\(으\)로|이\(야\))");
         /// <summary>Spoken times already carry their own "around" (쯤 / 조금 넘어 / 조금 전): templates that add "쯤" or "에" after
         /// {time} would double it ("4시쯤쯤", "4시 조금 넘어에", "4시 조금 넘어서이었고요") — smooth those joins. Also joins sound nouns ("발소리").</summary>
         public static string TimeJoins(string s)
@@ -141,7 +142,7 @@ namespace BL23.Sim
             if (string.IsNullOrEmpty(s)) return s;
             s = TimeJoins(s);
             if (s.IndexOf('(') < 0) return s;
-            return _pair.Replace(s, m => { string w = m.Groups[1].Value, p = m.Groups[2].Value; string first = p.StartsWith("(") ? "로" : p.Substring(0, p.IndexOf('(')); return w + Josa(w, first); });
+            return _pair.Replace(s, m => { string w = m.Groups[1].Value, close = m.Groups[2].Value, p = m.Groups[3].Value; string first = p.StartsWith("(") ? "로" : p.Substring(0, p.IndexOf('(')); return w + close + Josa(w, first); });
         }
 
         public static string Josa(string word, string p)

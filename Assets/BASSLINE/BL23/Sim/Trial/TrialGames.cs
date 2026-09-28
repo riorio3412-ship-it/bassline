@@ -62,6 +62,7 @@ namespace BL23.Sim
         /// <summary>The player's evidence cards of this chapter (bodies, traces, objects, records, testimonies heard in investigation).</summary>
         public static List<Bullet> Arsenal(Simulation sim)
         {
+            if (sim.S.Trial?.Debate != null) return TrialSystem.DebateArsenal(sim);   // the debate's cards are the 은판 deck
             // the notebook's order (사건 단서 first, 중요 first), its short titles and one-line headlines
             var list = new List<Bullet>();
             foreach (var v in CaseBoard.Cards(sim).Where(v => v.Ev.Props.Count > 0))
@@ -75,6 +76,7 @@ namespace BL23.Sim
         public static Evidence BulletEvidence(GameState S, string id)
         {
             if (id == null) return null;
+            if (id.StartsWith("plate:")) return TrialSystem.DebatePlateEvidence(S, id);
             if (id.StartsWith("claim:"))
             {
                 var c = S.Trial?.Claims.FirstOrDefault(x => x.Id == id.Substring(6)); if (c?.Prop == null) return null;
@@ -109,6 +111,7 @@ namespace BL23.Sim
         /// <summary>Automation only (headless test player / AutoProbe demo): would this card work on that statement? Never drives the game.</summary>
         public static bool ProbeWorks(GameState S, string claimId, bool support, string cardId)
         {
+            if (S.Trial?.Debate != null) return TrialSystem.DebateProbe(S, claimId, cardId);
             var c = S.Trial?.Claims.FirstOrDefault(x => x.Id == claimId); var a = support ? "agree" : "contra"; return c != null && Valid(a, Eval(S, c, BulletEvidence(S, cardId), a));
         }
         public static bool ProbeSlot(Simulation sim, string slot, string cardId) { var T = sim.S.Trial; return T?.Game != null && SlotFits(sim, T, slot, T.Game.Opponent, BulletEvidence(sim.S, cardId), out _); }
@@ -121,7 +124,11 @@ namespace BL23.Sim
         static string LineKind(TrialClaim c) => c.Key == "defend_self" || c.Key == "defend_other" || c.Key == "final_defense" || c.Topic == "defense" || (c.Prop != null && c.Prop.Value == "window-cover") ? "defense" : "claim";
 
         // ================================================================== round lifecycle
-        static TrialGame NewGame(TrialState T, string kind) => new TrialGame { Id = "g" + (T.GameLog.Count(x => x.StartsWith("#")) + 1), Kind = kind };
+        internal static TrialGame NewGame(TrialState T, string kind) => new TrialGame { Id = "g" + (T.GameLog.Count(x => x.StartsWith("#")) + 1), Kind = kind };
+
+        /// <summary>The debate (TrialSystem.Debate*) opens and closes rounds through these.</summary>
+        internal static void BeginGame(TrialState T, TrialGame G) => Begin(T, G);
+        internal static void EndGame(TrialState T, TrialGame G, string status) => End(T, G, status);
 
         static void Begin(TrialState T, TrialGame G)
         {
@@ -170,6 +177,7 @@ namespace BL23.Sim
         public static void AutoResolve(Simulation sim, bool smart)
         {
             var S = sim.S; var T = S.Trial; if (T == null) return;
+            if (T.Debate != null && (T.PendingPrompt == "accuse" || T.Game?.Why == "debate")) { TrialSystem.DebateAutoResolve(sim, smart); return; }
             var p = T.PendingPrompt; var G = T.Game;
             if (p == "accuse") { T.PendingPrompt = null; if (smart) TrialSystem.PlayerAccuse(sim, TrialSystem.AutoVote(sim, true)); return; }
             if (G == null || G.Status != "open") { if (p != null && p.StartsWith("game:")) T.PendingPrompt = null; return; }
@@ -235,6 +243,7 @@ namespace BL23.Sim
         public static void Timeout(Simulation sim)
         {
             var T = sim.S.Trial; var G = T?.Game; if (G == null || G.Status != "open") return;
+            if (T.Debate != null && G.Why == "debate") { TrialSystem.DebateInferTimeout(sim); return; }
             bool quiet = G.Kind == "inquiry" && G.Why == "quiet"; if (!quiet) T.Influence = MathX.Clamp01(T.Influence - 0.04f);
             string msg = quiet ? "심문을 마쳤다 — 무너뜨릴 만한 말은 끝내 나오지 않았다" : G.Kind == "inquiry" ? "촛불이 모두 꺼졌다 — 누구의 증언도 무너지지 않았다" : G.Kind == "question" ? "끝내 답하지 못했다" : G.Kind == "ledger" ? "두 증언에서 어긋난 곳을 짚어 내지 못했다" : "시간이 다 됐다";
             TrialSystem.Say(T, "result", null, msg, data: "Timeout");
@@ -773,6 +782,7 @@ namespace BL23.Sim
         public static int QuestionPick(Simulation sim, string choice)
         {
             var S = sim.S; var T = S.Trial; var G = T?.Game; if (G == null || G.Kind != "question" || G.Status != "open") return 0;
+            if (T.Debate != null && G.Why == "debate") return TrialSystem.DebateInferPick(sim, choice);
             if (choice == G.Word)
             {
                 TrialSystem.Say(T, "line", Cast.Player, $"…그래. 답은 ‘{G.Word}’{LineBank.Josa(G.Word, "이야")}.", emo: Emotion.Angry, gesture: Anim.Point);

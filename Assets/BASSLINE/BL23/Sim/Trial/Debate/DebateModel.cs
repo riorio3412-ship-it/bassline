@@ -28,7 +28,7 @@ namespace BL23.Sim
         public string Source;                                    // feeders that contributed ("pack,legacy")
         public int FakeTarget;                                   // 4 | 5 | 6 (MurderHash), before filling
         public List<Plate> Plates = new List<Plate>();           // by N
-        public List<DeckClaim> Claims = new List<DeckClaim>();   // the presented story ("c1"…)
+        public List<DeckClaim> Claims = new List<DeckClaim>();   // the presented story ("k1"…)
         public List<DeckMystery> Mysteries = new List<DeckMystery>();
         public int TrueCount, FakeCount;
         public List<string> Log = new List<string>();            // why each slot was filled or left empty
@@ -105,6 +105,10 @@ namespace BL23.Sim
         public string EvolvedFrom;
         public List<string> Supporters = new List<string>();
         public float Conviction; public int Asked; public int Misses;
+        public string TrialClaim;    // the court record the Game targets (TrialState.Claims id)
+        public string Target;        // Blame: whom it names
+        public string Answers;       // a truth-side slide: the riddle claim it answers ("not:<claim id>") — sealed by a plate that breaks that claim
+        public bool Leans;           // the claim is what its pinned plate seems to say: when the plate turns, the theory falls with it
     }
 
     [Serializable]
@@ -114,6 +118,11 @@ namespace BL23.Sim
         public string State = "dim";   // dim · lit · settled · deferred
         public List<string> Theories = new List<string>(); public int Misses; public string Reframe; public string Plaque;
         public bool Key;               // the aha: settles through 그렇다면…
+        public string Act;             // act1 · act2
+        public string Trick;           // the staged first impression this riddle undoes (Message · Place · Tod · Seal · Swap · Accident …; "Who" for the L2 riddle)
+        public int Passes, Floors;     // floors let pass in a row; floors opened
+        public string SettledBy;       // player · npc · infer — and how ("collapse", "seal")
+        public List<string> Requests = new List<string>();   // residents who asked for the floor and spoke
     }
 
     [Serializable]
@@ -128,7 +137,20 @@ namespace BL23.Sim
         public int Candles, CandlesLit;                     // lit only at 지목, on the accused
         public bool Chance, Means, Deceit;                  // knots (기회 · 수단 · 거짓) filled by proof
         public List<string> Counters = new List<string>();  // counter kinds used, in order
+        public int Pressure;                                // lies broken + fallbacks forced + plates landed + accusations
+        public bool Told;                                   // the tell fired
+        public string Counter;                              // the counter theory now on the floor (duel)
+        public int Passes;                                  // floors let pass on the current counter
+        public List<string> Used = new List<string>();      // plates already laid in the duel
+        public List<string> Plan = new List<string>();      // the counters this duel will run: alibi:<lie> · weapon:<lie> · scapegoat:<lie> · fallback:<order> · final
     }
+
+    /// <summary>A lie from the culprit's TrialPack, frozen at the 심판's start (the pack is computed on demand).</summary>
+    [Serializable]
+    public sealed class DuelLie { public string Id, Topic, Text; public List<string> BrokenBy = new List<string>(); public int Cost = 1; public bool Used, Broken; }
+
+    [Serializable]
+    public sealed class DuelFallback { public int Order; public string Trigger, Story, Concedes, Keeps; public bool Used; }
 
     [Serializable]
     public sealed class LeanDelta { public string Actor, From, To; }
@@ -184,5 +206,24 @@ namespace BL23.Sim
         public int ReadableSinceDecision; public int Agreements; public int Reversals;
         public List<string> Seen = new List<string>();          // novelty tags used this 심판 (counter:, theory:, axis:)
         public long Seq;
+        // ---- the case as the court began (never recomputed: the court moves people around)
+        public int KillRoom = -1, FoundRoom = -1; public double KillClock, FoundClock;
+        public string Trick, Scapegoat;
+        public int ClaimRoom = -1; public double ClaimFrom = -1, ClaimTo = -1; public List<string> ClaimWith = new List<string>();
+        public string StoryText, StoryTheory;
+        public int Budget;
+        public List<DuelLie> Lies = new List<DuelLie>(); public List<DuelFallback> Fallbacks = new List<DuelFallback>();
+        // ---- the flow
+        public List<string> Queue = new List<string>();         // riddle ids in play order
+        public string Push;                                      // whom the room was turned toward at R1
+        public int Bells, Hits, Misses, Passes, Asks, AccuseTries, Hints;
+        public Dictionary<string, string> Initial = new Dictionary<string, string>();   // each juror's first reading (seeds only)
+        public string FloorTheory;                               // the focused slide of the open floor
+        public string Record;                                    // the House's record of the body, read at the 서막 ("…에 둔기로 맞은 자국")
+        public List<string> Fallen = new List<string>();         // name plates turned down (proven elsewhere when it happened)
+        public List<string> Alone = new List<string>();          // said they were alone at the hour (the roll call)
+        public List<string> Paired = new List<string>();         // "a|b": two people who each said they were with the other
+        public int FloorAt = -1;                                 // T.Beats count when the floor opened (a pass leaves no action behind it)
+        public int ActionAt = -1;                                // T.Beats count at the last player action
     }
 }

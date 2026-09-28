@@ -9,16 +9,18 @@ using BL23.Sim;
 /// The debate 심판 (Sim/Trial/Debate, TrialReforge.md). Modes:
 ///   deckdump &lt;seed&gt;            — run to the first 심판 (investigating like TrialDump's thorough player), build the 은판 deck, print it
 ///   deckgate &lt;n&gt;               — the deck over seeds 20260926, 777 + n more: sizes, fakes, routes, users, validation log
+///   debate &lt;seed&gt; [smart|naive|passive] — play the debate 심판 headless and print it as the screen would show it, with
+///                                    the test player's moves inline, then the room, the knots and the verdict
 /// </summary>
 public static partial class Program
 {
     /// <summary>Run a campaign to its first 심판 (Phase.Trial), investigating each confirmed case the way the audits do.</summary>
-    static Simulation ToFirstTrial(ulong seed, out string why)
+    static Simulation ToFirstTrial(ulong seed, out string why, bool useDebate = false)
     {
         why = null;
         var sim = Simulation.NewCampaign(seed, 4); sim.Headless = true; var S = sim.S; S.Phase = Phase.Daily;
         long ticks = 0; string invKey = null;
-        bool debate = TrialSystem.DebateEnabled; TrialSystem.DebateEnabled = false;   // reach the court with the Begin of whichever engine the caller wants below
+        bool debate = TrialSystem.DebateEnabled; TrialSystem.DebateEnabled = useDebate;   // Begin runs inside Step: the court opens with the engine asked for
         try
         {
             while (S.Phase != Phase.Trial && ticks < 30_000_000)
@@ -89,6 +91,51 @@ public static partial class Program
             Console.WriteLine($"seed {seed}: {C.Trick ?? "-",-8} plates {d.Plates.Count,2} fakes {d.FakeCount} riddles {d.Mysteries.Count} claims {d.Claims.Count} {(good ? "ok" : "THIN")} | " + string.Join("; ", d.Log.Where(l => l.StartsWith("claim") || l.StartsWith("thin") || l.StartsWith("no ")).Take(3)));
         }
         Console.WriteLine($"deckgate: reached {reached}/{seeds.Count}, full {ok}, thin {thin}");
+        return 0;
+    }
+
+    static int DebateRun(string[] args)
+    {
+        ulong seed = args.Length > 1 && ulong.TryParse(args[1], out var sd) ? sd : 20260926UL;
+        string policy = args.Length > 2 ? args[2] : "smart";
+        var sim = ToFirstTrial(seed, out var why, useDebate: true); if (sim == null) { Console.WriteLine(why); return 1; }
+        var S = sim.S; var T = S.Trial;
+        if (T.Debate == null) { Console.WriteLine($"seed {seed}: the court opened with the old engine (no debate-eligible murder)"); return 1; }
+        var D = T.Debate;
+        var inc = S.Incidents[D.Incident];
+        Console.WriteLine(DeckText(sim, Debate.Facts(sim, inc), D.Deck));
+        var trace = new List<string>(); TrialSystem.DebateTraceLog = trace;
+        try { TrialSystem.DebateHeadless(sim, policy); }
+        finally { TrialSystem.DebateTraceLog = null; }
+        // the transcript: every line the screen would show, the test player's moves where they happened
+        var at = trace.Select(x => { int i = x.IndexOf('|'); return (n: int.Parse(x.Substring(0, i)), what: x.Substring(i + 1)); }).ToList();
+        int readable = 0;
+        for (int i = 0; i <= T.Beats.Count; i++)
+        {
+            foreach (var a in at.Where(a => a.n == i)) Console.WriteLine($"          ▶ {a.what}");
+            if (i == T.Beats.Count) break;
+            var b = T.Beats[i];
+            string who = b.Speaker == null ? "" : Cast.GivenOf(b.Speaker) ?? b.Speaker;
+            string tag = b.Kind == "line" ? "" : $"[{b.Kind}{(b.Data != null && b.Kind != "vote" ? ":" + b.Data : "")}] ";
+            string face = b.Kind == "line" && b.Speaker != null && b.Emotion != Emotion.Neutral ? $" ({b.Emotion}{(b.Gesture != Anim.Talk && b.Gesture != Anim.None ? "/" + b.Gesture : "")})" : "";
+            string key = b.Key != null && (b.Key == "accuse" || b.Key == "object" || b.Key == "counter" || b.Key == "panic" || b.Key == "recant" || b.Key == "steer" || b.Key == "p_object" || b.Key == "reveal") ? " «" + b.Key + "»" : "";
+            if (b.Kind == "mode") { Console.WriteLine($"\n══ {b.Text} ══"); continue; }
+            if (b.Kind == "topic") { Console.WriteLine($"\n── {b.Text}"); continue; }
+            if (b.Kind == "line" && b.Speaker != null || b.Kind == "system") readable++;
+            Console.WriteLine($"{i,4} {tag}{(who.Length > 0 ? who + face + key + ": " : "")}{b.Text}");
+        }
+        Console.WriteLine();
+        Console.WriteLine($"== verdict: accused {Cast.GivenOf(T.Accused)} culprit {Cast.GivenOf(D.Target)} correct {D.Correct} · finished {T.Finished} stage {T.Stage} act {D.Act}/{D.Step}");
+        Console.WriteLine($"   riddles: {string.Join(" · ", D.Mysteries.Select(m => $"{m.Id} {m.Trick} {m.State} {m.SettledBy ?? "-"} floors {m.Floors} passes {m.Passes} theories {m.Theories.Count}"))}");
+        Console.WriteLine($"   plaques: {D.Plaques.Count} — " + string.Join(" / ", D.Plaques.Select(q => q.Text)));
+        Console.WriteLine($"   knots: chance {D.Mind.Chance} means {D.Mind.Means} deceit {D.Mind.Deceit} · candles {D.Mind.CandlesLit}/{D.Mind.Candles} · plan {string.Join(",", D.Mind.Plan)} · broken {D.Mind.Broken} · pressure {D.Mind.Pressure}");
+        Console.WriteLine($"   decisions {D.Decisions.Count} (counted {D.Decisions.Count(d => d.Counted)}) · hits {D.Hits} misses {D.Misses} passes {D.Passes} asks {D.Asks} hints {D.Hints} reversals {D.Reversals} · readable lines {readable} · beats {T.Beats.Count}");
+        Console.WriteLine($"   decisions: {string.Join(" | ", D.Decisions.Select(d => d.Kind + ":" + d.Outcome))}");
+        Console.WriteLine($"   votes: {string.Join(", ", T.Votes.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => Cast.GivenOf(kv.Key) + "→" + Cast.GivenOf(kv.Value)))}");
+        Console.WriteLine($"   room: {string.Join(", ", D.Reading.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => Cast.GivenOf(kv.Key) + ":" + (kv.Value == "?" ? "?" : Cast.GivenOf(kv.Value))))}");
+        // the state must survive a save in the middle of it (and after)
+        var json = SaveStore.Serialize(S); var back = SaveStore.Serialize(SaveStore.Deserialize(json));
+        Console.WriteLine($"   save roundtrip: {(json == back ? "IDENTICAL" : "DIFFERENT")} ({json.Length} chars)");
         return 0;
     }
 }
