@@ -354,6 +354,8 @@ namespace BL23.Sim
             if (f == "hint" || f == "contract" || f == "secret") { if (npc != null) PK.Facts.Add(f + ":" + npc); return; }
             if (f.StartsWith("knot:")) { CastWeb.RevealKnot(S, f.Substring(5), Cast.Player); return; }
             if (f.StartsWith("flag:")) { S.Flags[f.Substring(5)] = S.Day; return; }
+            // 민혁 talked someone into coming to the house's evening (LifeTable "hev")
+            if (f.StartsWith("hevjoin:")) { var p = f.Split(':'); var g = p.Length >= 3 ? S.Gatherings.FirstOrDefault(x => x.Id == p[1]) : null; if (g != null && g.Status.TryGetValue(p[2], out var st) && st == "declined") { g.Status[p[2]] = "accepted"; S.Log("InviteAnswer", p[2], g.Host, data: $"{g.Id} persuaded accepted"); } return; }
             // the wall (Conscience): "mend:P03,P10" (0.03 each) or "mend:P03=0.06"; "erode:P03=0.02"
             if (f.StartsWith("mend:") || f.StartsWith("erode:"))
             {

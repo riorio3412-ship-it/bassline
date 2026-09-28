@@ -452,7 +452,7 @@ namespace BL23.Sim
             if (host == null || !host.Alive || S.Phase != Phase.Daily) { if (S.Phase != Phase.Daily && S.Clock < g.Cur.Start) { g.Cancelled = true; S.Log("GatheringCancelled", g.Host, data: g.Id + " phase"); } else if (host == null || !host.Alive) { g.Cancelled = true; } return; }
             var cur = g.Cur;
             // revision (once): room taken / host's whim / a rule — told to some, not all (IG02)
-            if (g.Rev == 0 && S.Clock > cur.Start - 60 && S.Clock < cur.Start - 20 && !S.Flags.ContainsKey("grevcheck:" + g.Id))
+            if (g.Rev == 0 && S.Clock > cur.Start - 60 && S.Clock < cur.Start - 20 && !S.Flags.ContainsKey("grevcheck:" + g.Id) && !HouseEvents.IsHouse(g))   // the house keeps its word
             {
                 S.Flags["grevcheck:" + g.Id] = 1;
                 bool occupied = S.Living.Count(x => x.Room == cur.Room && !g.Status.ContainsKey(x.Id)) >= 3;

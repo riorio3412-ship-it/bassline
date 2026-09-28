@@ -109,9 +109,12 @@ namespace BL23.Sim
                 if (!g.Status.TryGetValue(a.Id, out var s0) || !(s0 == "accepted" || s0 == "attended" || s0 == "invited")) continue;
                 var R = g.Cur; if (R.Start < from - 5 || R.Start > now + 360) continue;
                 bool vin = g.Status.TryGetValue(v.Id, out var vs) && (vs == "accepted" || vs == "attended" || vs == "host");
-                bool dark = S.RuleActive("CH03") && S.Rule("CH03").Times.Any(t => t > R.Start + 10 && t < R.End - 10);
+                bool dark = S.RuleActive("CH03") && S.Rule("CH03").Times.Any(t => t > R.Start + 10 && t < R.End - 10) || HouseEvents.Dark(S, g);   // the house's toast, a dark evening
                 list.Add(new MomentCand { Kind = "joined", Ref = g.Id, Label = g.Label, Room = R.Room, At = R.Start, End = R.End, Strike = Math.Max(now + 2, R.Start - 5), Crowd = true, VictimIn = vin, Dark = dark, DarkBy = dark ? "house" : null, Serve = false });
             }
+            // 2b) the house's treasure hunt: where the victim searches, alone, is public (the chart read out in the morning)
+            if (HouseEvents.HuntZone(S, v.Id, out var hz, out var hAt, out var hEnd) && hAt > from - 5 && hEnd - 20 > now)
+                list.Add(new MomentCand { Kind = "hunt", Room = hz, HabitRoom = hz, At = Math.Max(hAt, now + 2), End = hEnd, Strike = Math.Max(hAt + 5, now + 2), Label = "보물찾기 — " + S.RoomName(hz) });
             // 3) the house's own darkness (CH03: announced times; CH23: the long dark)
             if (S.RuleActive("CH03"))
                 foreach (var t in S.Rule("CH03").Times.OrderBy(x => x)) if (t > from + 40 && t < now + 1440)
@@ -241,6 +244,9 @@ namespace BL23.Sim
                         if (m.Dark && wq != null) Add("dark-strike", wq);
                     }
                     else if (wc != null) { var hb = HabitOf(S, a, v); if (hb.room >= 0 && ErrandPref(S.Layout.Room(hb.room).Type) >= 0.6) Add("slip-out", wc, hb.room); }
+                    break;
+                case "hunt":
+                    if (w != null) Add("ambush", w, m.HabitRoom);
                     break;
                 case "house-dark": case "long-dark":
                     if (wq != null) Add("dark-strike", wq);

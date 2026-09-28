@@ -16,7 +16,7 @@ namespace BL23.Sim
     /// </summary>
     public sealed partial class Simulation
     {
-        static readonly string[] TopicOrder = { "death", "verdict", "rule", "hunger", "buddy", "conflict", "event", "absent", "rumour", "habit", "food", "pact", "faction" };
+        static readonly string[] TopicOrder = { "death", "verdict", "rule", "hunger", "buddy", "conflict", "event", "absent", "rumour", "habit", "food", "pact", "faction", "hev" };
 
         /// <summary>Presentation: 민혁 is at the table with these diners. The staged table scene, or null (already talked this meal).</summary>
         public LifeStage LifeTable(List<string> diners, string meal)
@@ -82,8 +82,15 @@ namespace BL23.Sim
                 string step = pu.Rule.Substring(5);
                 found.Add(("push", step, step == "sample" ? By(d => S.A(d).Def.P.WishDesire) : Has("P06") ?? Has("P05") ?? Has("P15") ?? Has("P03") ?? By(d => S.A(d).Def.P.Honesty)));
             }
+            // 2c the house's evening today (HouseEvents): who is going and who is not — each in their own words, with their reason
+            var hev = S.Gatherings.Where(g => HouseEvents.IsHouse(g) && !g.Cancelled && !g.Done && g.Revs.Count > 0 && (int)(g.Cur.Start / 1440) + 1 == S.Day && g.Cur.Start > S.Clock && !S.Flags.ContainsKey("lthev:" + g.Id)).OrderBy(g => g.Cur.Start).FirstOrDefault();
+            if (hev != null)
+            {
+                string go = diners.Where(d => hev.Status.TryGetValue(d, out var st) && st == "accepted").OrderByDescending(d => S.A(d).Def.P.Sociability).ThenBy(d => d, StringComparer.Ordinal).FirstOrDefault();
+                if (go != null && diners.Count >= 3) found.Add(("hev", hev.Id, go));
+            }
             // 3 rule: a rule announced within half a day
-            var an = S.Announcements.Where(a => a.Rule != null && !a.Rule.StartsWith("push:", StringComparison.Ordinal) && S.Clock - a.Clock < 12 * 60 && !S.Flags.ContainsKey("ltrule:" + a.Rule)).OrderByDescending(a => a.Clock).FirstOrDefault();
+            var an = S.Announcements.Where(a => a.Rule != null && !a.Rule.StartsWith("push:", StringComparison.Ordinal) && !a.Rule.StartsWith("hev:", StringComparison.Ordinal) && S.Clock - a.Clock < 12 * 60 && !S.Flags.ContainsKey("ltrule:" + a.Rule)).OrderByDescending(a => a.Clock).FirstOrDefault();
             if (an != null) { var ri = S.Ch.Rules.FirstOrDefault(r => r.Id == an.Rule || r.Rule == an.Rule); string owner = ri?.Targets.FirstOrDefault(t => diners.Contains(t)) ?? By(d => S.A(d).Needs.Stress); found.Add((ri != null && ri.Rule == "CH06" ? "envelope" : "rule", an.Rule, owner)); }
             // 4 hunger
             if (S.Flags.TryGetValue($"hunger:{S.Loop}:{S.Chapter}", out var hv) && hv >= 1 && !S.Flags.ContainsKey($"lthunger:{S.Loop}:{S.Chapter}:{(int)hv}"))
@@ -126,7 +133,7 @@ namespace BL23.Sim
             // 11 food
             found.Add(("food", null, Has("P10") ?? By(d => S.A(d).Def.Hobbies.Contains("cook") ? 1 : 0)));
             // the strongest (1–6) wins outright; among the everyday ones (7–11) avoid last meal's kind
-            bool Strong(string k) => Array.IndexOf(TopicOrder, k) < 6 || k == "envelope" || k == "push";
+            bool Strong(string k) => Array.IndexOf(TopicOrder, k) < 6 || k == "envelope" || k == "push" || k == "hev";
             var strong = found.FirstOrDefault(f => Strong(f.kind));
             if (strong.kind != null && Strong(strong.kind)) return strong;
             // everyday topics: not last meal's kind, and the ones this loop hasn't heard yet first (the table keeps changing)
@@ -163,14 +170,16 @@ namespace BL23.Sim
                 case "pact": run.Ctx["n"] = KorCount(S.Survivors); break;
                 case "push": run.Ctx["push"] = subject; run.Ctx["rule"] = HousePush.NameOf(subject) ?? "새 규칙"; break;
                 case "faction": { var f = S.Factions.FirstOrDefault(x => x.Id == subject); if (f != null) { run.Ctx["t"] = f.Leader; run.Ctx["group"] = f.Name; run.Ctx["n"] = KorCount(f.Members.Count); run.Ctx["fac"] = f.Id; } break; }
+                case "hev": { var g = S.Gatherings.FirstOrDefault(x => x.Id == subject); if (g != null) { run.Ctx["act"] = g.Label; run.Ctx["gid"] = g.Id; run.Ctx["time"] = g.Cur.Start.ToString(CultureInfo.InvariantCulture); run.Ctx["place"] = g.Cur.Room.ToString(CultureInfo.InvariantCulture); } break; }
             }
             var beat = new LBeat { Id = "start" }; sc.Beats.Add(beat); run.Beat = beat;   // (the run starts here — without it the table said nothing)
             // the opener
             // the house's token: everyone speaks of their own (wish_sample); its other steps have their own pair of keys
-            bool again = kind == "pact" && S.Chapter > 1;
+            bool again = kind == "pact" && S.Chapter > 1; string openKey0 = null;
             var fac = kind == "faction" ? S.Factions.FirstOrDefault(x => x.Id == subject) : null;
             bool Inside(string who) => fac != null && fac.Members.Contains(who);
-            string openKey = kind == "conflict" ? "tt_conflict" : kind == "verdict" ? "tt_verdict" : kind == "envelope" ? "env_open" : kind == "push" ? (subject == "sample" ? "wish_sample" : "push_" + subject) : again ? "tt_pact_again" : kind == "faction" ? (Inside(owner) ? "tt_faction" : "tt_faction_out") : "tt_" + kind;
+            if (kind == "hev") openKey0 = "tt_hev_go";
+            string openKey = openKey0 != null ? openKey0 : kind == "conflict" ? "tt_conflict" : kind == "verdict" ? "tt_verdict" : kind == "envelope" ? "env_open" : kind == "push" ? (subject == "sample" ? "wish_sample" : "push_" + subject) : again ? "tt_pact_again" : kind == "faction" ? (Inside(owner) ? "tt_faction" : "tt_faction_out") : "tt_" + kind;
             string reKey = kind == "push" ? (subject == "sample" ? "wish_sample" : "push_" + subject + "_re") : again ? "tt_pact_again_re" : $"tt_{(kind == "envelope" ? "envelope" : kind)}_re";
             string openTo = kind == "conflict" ? a : null;
             beat.Lines.Add(KeyLine(owner, openTo, openKey, kind == "death" || kind == "verdict" ? Emotion.Sad : kind == "conflict" ? Emotion.Angry : Emotion.Neutral));
@@ -199,7 +208,16 @@ namespace BL23.Sim
             // 2–3 reactors, those with a tie to the opener first (their pair lines land)
             var used = new HashSet<string>(beat.Lines.Select(l => l.Who));
             var reactors = diners.Where(d => !used.Contains(d)).OrderByDescending(d => (CastWeb.TieBetween(d, owner) != null ? 2 : 0) + LineBank.Variants(d, $"{reKey}@{owner}") + LR.F()).ThenBy(d => d, StringComparer.Ordinal).Take(kind == "food" || kind == "habit" ? 2 : kind == "pact" ? 5 : kind == "push" ? 4 : 3).ToList();
-            foreach (var r in reactors) beat.Lines.Add(KeyLine(r, owner, kind == "faction" ? (Inside(r) ? "tt_faction_in" : "tt_faction_out") : reKey, kind == "push" ? Emotion.Fear : Emotion.Neutral));
+            var hg = kind == "hev" ? S.Gatherings.FirstOrDefault(x => x.Id == subject) : null;
+            string HevKey(string who)
+            {
+                if (hg == null || !hg.Status.TryGetValue(who, out var st)) return "tt_hev_yes";
+                if (st != "declined") return "tt_hev_yes";
+                var why = HouseEvents.NoReason(S, who, hg.Id);
+                return why == "fear" ? "tt_hev_no_fear" : why == "enemy" ? "tt_hev_no_enemy" : why == "lead" ? "tt_hev_no_lead" : why == "crowd" ? "tt_hev_no_crowd" : "tt_hev_no";
+            }
+            if (kind == "hev") reactors = diners.Where(d => d != owner).OrderByDescending(d => hg != null && hg.Status.TryGetValue(d, out var st) && st == "declined" ? 1 : 0).ThenBy(d => MurderHash.U01(S, "hevtab:" + subject + ":" + d)).ThenBy(d => d, StringComparer.Ordinal).Take(4).ToList();
+            foreach (var r in reactors) beat.Lines.Add(KeyLine(r, owner, kind == "faction" ? (Inside(r) ? "tt_faction_in" : "tt_faction_out") : kind == "hev" ? HevKey(r) : reKey, kind == "push" ? Emotion.Fear : Emotion.Neutral));
             beat.Lines.RemoveAll(l => l == null);
             if (withPlayer) foreach (var o in TableOptions(kind, owner, a, b, diners, run)) beat.Opts.Add(o);
             // bookkeeping: this meal has had its topic
@@ -221,6 +239,7 @@ namespace BL23.Sim
                     break;
                 case "push": S.Flags[$"ltpush:{S.Loop}:push:{subject}"] = S.Clock; break;
                 case "faction": if (fac != null) S.Flags[$"ltfac:{fac.Id}:{(int)fac.Changed}"] = S.Clock; break;
+                case "hev": S.Flags["lthev:" + subject] = S.Clock; break;
                 case "pact":
                     S.Flags[$"ltpact:{S.Loop}:{S.Chapter}"] = S.Clock;
                     foreach (var d in diners.Concat(withPlayer ? new[] { Cast.Player } : new string[0])) S.Flags[$"pact:{S.Loop}:{S.Chapter}:{d}"] = S.Clock;
@@ -245,7 +264,7 @@ namespace BL23.Sim
             {
                 case "death": return "빈자리"; case "verdict": return "심판 다음 날"; case "rule": return "새 규칙"; case "envelope": return "봉투";
                 case "hunger": return "줄어든 식사"; case "buddy": return "짝"; case "conflict": return "어제의 말다툼"; case "event": return "오늘의 모임";
-                case "absent": return "빈 의자"; case "rumour": return "소문"; case "habit": return "버릇"; case "pact": return "약속"; case "faction": return "무리"; default: return "오늘의 식탁";
+                case "absent": return "빈 의자"; case "rumour": return "소문"; case "habit": return "버릇"; case "pact": return "약속"; case "faction": return "무리"; case "hev": return "오늘 밤의 초대"; default: return "오늘의 식탁";
             }
         }
 
@@ -327,6 +346,15 @@ namespace BL23.Sim
                             list.Add(Opt($"{Name(O)}, 그 말 듣고 누가 떠올랐어요?").Do(F(O, "me", respect: 0.02f, trust: 0.01f)));
                             list.Add(Opt("말없이 잔을 내려놓는다").Act());
                         }
+                        break;
+                    }
+                case "hev":
+                    {
+                        var g = run.Ctx.TryGetValue("gid", out var gid) ? S.Gatherings.FirstOrDefault(x => x.Id == gid) : null; if (g == null) break;
+                        var no = diners.Where(d => g.Status.TryGetValue(d, out var st) && st == "declined").OrderBy(d => d, StringComparer.Ordinal).ToList();
+                        list.Add(Opt("저도 갈게요. 같이 가요.").Do(diners.Where(d => !no.Contains(d)).Select(d => F(d, "me", like: 0.02f)).ToArray()));
+                        if (no.Count > 0) { var bring = Opt($"{Name(no[0])}, 같이 가요. 제가 옆에 있을게요.").Do(F(no[0], "me", trust: 0.04f, attach: 0.02f, mem: "저택 행사에 같이 가자고 했다")); if (S.R(no[0], Cast.Player).Trust + S.R(no[0], Cast.Player).Like >= 0.25f) bring.Know($"hevjoin:{g.Id}:{no[0]}"); list.Add(bring); }
+                        list.Add(Opt("오늘 밤은 방에 있을래요.").Do(no.Select(d => F(d, "me", like: 0.01f)).ToArray()));
                         break;
                     }
                 case "faction":

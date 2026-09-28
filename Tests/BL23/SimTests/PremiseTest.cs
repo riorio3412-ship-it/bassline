@@ -24,6 +24,7 @@ public static partial class Program
         Console.WriteLine($"PREMISE seed={seed} days={days} {(off ? "(off: no wall, no pushes)" : "")}");
         double end = days * 1440; long ticks = 0; int lastMin = -1; long seenSeq = -1; double firstMurder = -1;
         string Who(string id) => id == null ? "—" : Cast.GivenOf(id) ?? id;
+        double g0(Gathering g) => g.Cur.Start;
         void Print(LifeStage st)
         {
             int g = 0;
@@ -62,10 +63,10 @@ public static partial class Program
                 if (e.Type == "Announce")
                 {
                     var p = (e.Data ?? "").Split(new[] { '|' }, 2); string key = p[0];
-                    if (key.StartsWith("y_push") || key.StartsWith("y_rule_") || key == "y_hunger" || key == "y_body")
+                    if (key.StartsWith("y_push") || key.StartsWith("y_rule_") || key.StartsWith("y_hev") || key == "y_hunger" || key == "y_body")
                         Console.WriteLine($"   [{ClockFmt.DayHM(e.Clock)}] 유스티 «{key}» {(p.Length > 1 ? p[1].Replace("|", " / ") : "")}");
                 }
-                else if (e.Type == "HousePush" || e.Type == "HousePushSkip" || e.Type == "RuleImposed") Console.WriteLine($"   [{ClockFmt.DayHM(e.Clock)}] {e.Type} {e.Data}");
+                else if (e.Type == "HousePush" || e.Type == "HousePushSkip" || e.Type == "RuleImposed" || e.Type == "HouseEvent" || e.Type == "HouseDark" || e.Type == "HouseMasks" || e.Type == "HouseHunt" || e.Type.StartsWith("Faction")) Console.WriteLine($"   [{ClockFmt.DayHM(e.Clock)}] {e.Type} {Who(e.Actor)} {e.Data}");
                 else if (e.Type == "WallErode" || e.Type == "WallMend") Console.WriteLine($"   [{ClockFmt.DayHM(e.Clock)}] {e.Type} {Who(e.Actor)} {e.Data}");
             }
             foreach (var inc in S.Incidents.Values.Where(i => i.Loop == S.Loop && i.Murder && !S.Flags.ContainsKey("ptdeath:" + i.Id)).ToList())
@@ -85,6 +86,20 @@ public static partial class Program
                     for (int i = 0; i < ids.Count; i++) for (int j = i + 1; j < ids.Count; j++) all.Add((Who(ids[i]) + "-" + Who(ids[j]), Factions.Affinity(S, ids[i], ids[j])));
                     var sorted = all.OrderByDescending(x => x.Item2).ToList();
                     Console.WriteLine("   affinity top: " + string.Join(", ", sorted.Take(10).Select(x => $"{x.Item1} {x.Item2:0.00}")) + $" · median {sorted[sorted.Count / 2].Item2:0.00} · bottom {sorted.Last().Item2:0.00}");
+                }
+            }
+            // 민혁 goes to the house's evening (HouseEvents) a few minutes in, and the festival stage plays
+            if (S.Phase == Phase.Daily && S.Player != null && S.Player.Alive)
+            {
+                var hg = S.Gatherings.FirstOrDefault(g => HouseEvents.IsHouse(g) && !g.Cancelled && S.Clock >= g.Cur.Start + 3 && S.Clock <= g.Cur.Start + 20 && !S.Flags.ContainsKey("ptsaw:" + g.Id));
+                if (hg != null && (S.Clock >= g0(hg) + 19 || S.LivingNpcs.Count(x => x.Room == hg.Cur.Room) >= 4))
+                {
+                    S.Flags["ptsaw:" + hg.Id] = 1;
+                    var room = S.Layout.Room(hg.Cur.Room); var pos = sim.RandomPointIn(room, S.R(Stream.Presentation)); sim.SetPlayerPose(pos, 0, false, false);
+                    var going = hg.Status.Where(kv => kv.Value == "accepted" || kv.Value == "attended" || kv.Value == "late").Select(kv => Who(kv.Key));
+                    var no = hg.Status.Where(kv => kv.Value == "declined").Select(kv => Who(kv.Key));
+                    Console.WriteLine($"   [{ClockFmt.DayHM(S.Clock)}] 저택 행사 「{hg.Label}」 @{room.Name} · 온다: {string.Join(",", going)} · 안 온다: {string.Join(",", no)}");
+                    var st = sim.LifeOffer(); if (st != null) Print(st); else Console.WriteLine("      (장면 없음 — 아직 사람이 덜 모였다)");
                 }
             }
             // someone comes to confide (HousePush → LifeDialogue "confide"): 민혁 hears them out and answers

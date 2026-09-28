@@ -30,14 +30,15 @@ namespace BL23.Sim
 
         void FestMinute(int mod)
         {
-            if (mod == 10 * 60) FestPlan();
+            if (mod == 10 * 60) { HouseEventPlan(); FestPlan(); }
+            HouseEventMinute(mod);
             if (mod == 17 * 60) MemorialPlan();
             // festivals running without 민혁: the host opens, the guests answer (overheard), the knowledge happens
-            foreach (var g in (S.Gatherings ?? new List<Gathering>()).Where(g => g.Kind != null && (g.Kind.StartsWith("fest:") || g.Kind == "memorial") && !g.Done && !g.Cancelled).ToList())
+            foreach (var g in (S.Gatherings ?? new List<Gathering>()).Where(g => g.Kind != null && (g.Kind.StartsWith("fest:") || g.Kind == "memorial" || HouseEvents.IsHouse(g)) && !g.Done && !g.Cancelled).ToList())
             {
                 if (S.Clock < g.Cur.Start + 15 || S.Flags.ContainsKey("lfestnpc:" + g.Id) || S.Flags.ContainsKey("lfestseen:" + g.Id)) continue;
                 S.Flags["lfestnpc:" + g.Id] = S.Clock;
-                var present = FestPresent(g); if (!present.Contains(g.Host) || present.Count < 2) continue;
+                var present = FestPresent(g); if (!(present.Contains(g.Host) || g.Host == Cast.Butler) || present.Count < 2) continue;
                 var run = FestBuild(g, present, false); if (run == null) continue;
                 var lines = RunFrom(run);
                 LifeSayLater(lines, 0.2, 1.0);
@@ -109,11 +110,11 @@ namespace BL23.Sim
         LifeStage FestOffer()
         {
             var me = S.Player;
-            foreach (var g in (S.Gatherings ?? new List<Gathering>()).Where(g => g.Kind != null && (g.Kind.StartsWith("fest:") || g.Kind == "memorial") && !g.Done && !g.Cancelled))
+            foreach (var g in (S.Gatherings ?? new List<Gathering>()).Where(g => g.Kind != null && (g.Kind.StartsWith("fest:") || g.Kind == "memorial" || HouseEvents.IsHouse(g)) && !g.Done && !g.Cancelled))
             {
-                if (g.Cur.Room != me.Room || S.Clock < g.Cur.Start - 5 || S.Clock > g.Cur.End - 10) continue;
+                if (g.Cur.Room != me.Room || S.Clock < g.Cur.Start - 5 || S.Clock > g.Cur.End - (HouseEvents.IsHouse(g) ? 2 : 10)) continue;
                 if (S.Flags.ContainsKey("lfestseen:" + g.Id)) continue;
-                var present = FestPresent(g); if (!present.Contains(g.Host) || present.Count < 2) continue;
+                var present = FestPresent(g); if (!(present.Contains(g.Host) || g.Host == Cast.Butler) || present.Count < 2) continue;
                 var run = FestBuild(g, present, true); if (run == null) continue;
                 S.Flags["lfestseen:" + g.Id] = S.Clock; LFinc("lfest:seen");
                 if (g.Status.TryGetValue(Cast.Player, out var st) && (st == "invited" || st == "accepted")) g.Status[Cast.Player] = "attended";
@@ -159,6 +160,8 @@ namespace BL23.Sim
                 case "fest:concert": FestConcert(sc, run, g.Host, present, withPlayer); break;
                 case "fest:cooking": FestCooking(sc, run, g.Host, others, withPlayer); break;
                 case "fest:bar": FestBar(sc, run, g.Host, others, withPlayer); break;
+                case "house:banquet": case "house:masque": case "house:hunt": case "house:stars": case "house:vigil":
+                    HouseEventScene(sc, run, g, present, withPlayer); break;
                 case "memorial":
                     {
                         string v = S.Flags.TryGetValue("lmemv:" + g.Id, out var vn) ? "P" + ((int)vn).ToString("00", CultureInfo.InvariantCulture) : LifeLastDeath()?.Victim;
