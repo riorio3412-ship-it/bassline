@@ -111,9 +111,76 @@ namespace BL23.Sim
                 float wd = a.Def.P.WishDesire;
                 S.K(a.Id).Facts.Add("wish-sample");
                 a.Needs.Stress = MathX.Clamp01(a.Needs.Stress + 0.04f);
-                Conscience.Erode(S, a.Id, 0.04f + 0.1f * wd, "sample");
+                Conscience.Erode(S, a.Id, 0.02f + 0.06f * wd, "sample");   // a token for everyone; the house saves its weight for one
             }
             S.K(Cast.Player).Facts.Add("wish-sample:none");
+            // and one of them finds more than a token: a letter in their own hand's words, the wish nearly there (never an order)
+            var ch = PickChosen(S);
+            if (ch != null)
+            {
+                S.Flags[$"chosen:{S.Loop}:{ch}"] = S.Clock; S.K(ch).Facts.Add("wish-sample:personal");
+                // tailored: the firmer they are, the more exactly the letter says what they need to hear (so the house's choice,
+                // not the cast list, decides who is closest to breaking — FirstsScan)
+                float firm = Conscience.Base(S, S.A(ch)) - S.LivingNpcs.Min(x => Conscience.Base(S, x));
+                Conscience.Erode(S, ch, ChosenWear + Math.Max(0f, firm) * 0.8f, "chosen");
+                if (S.Flags.TryGetValue("desp:" + ch, out var dp)) S.Flags["desp:" + ch] = Math.Min(1.8, dp * 1.25);   // and wanting it grows
+                S.Log("HouseChosen", Cast.Butler, ch, secret: true);
+                Letter(sim, ch);
+            }
+        }
+
+        /// <summary>
+        /// The letter (저택의 편지) that comes with the chosen one's token: not an order — a reason. It names one resident and says
+        /// one thing about them the chosen one cannot put down:
+        ///   secret  "그분은 당신의 과거를 알고 있습니다."            (someone holds my past: the secret motive)
+        ///   threat  "그분이 당신을 지켜보고 있습니다."               (they are after me: the defense motive, a strike first)
+        ///   rival   "당신의 소원과 그분의 소원은 함께 이루어지지 않습니다." (jealousy and a grudge where there was none)
+        /// The name is whoever the chosen one already stands furthest from (never family or a lover). The letter stays in their
+        /// room, where a search can find it — the motive the 심판 can put on the table.
+        /// </summary>
+        static void Letter(Simulation sim, string ch)
+        {
+            var S = sim.S; var a = S.A(ch); if (a == null) return;
+            float Tie(string o) => S.HasRel(ch, o) ? S.R(ch, o).Like + S.R(ch, o).Attach : 0f;
+            bool Kin(string o) => S.HasRel(ch, o) && (S.R(ch, o).Tags.Contains("family") || S.R(ch, o).Tags.Contains("lover"));
+            var x = S.LivingNpcs.Where(o => o.Id != ch && !Kin(o.Id)).OrderBy(o => Tie(o.Id) + (float)MurderHash.U01(S, "letter-name:" + o.Id) * 0.15f).ThenBy(o => o.Id, StringComparer.Ordinal).FirstOrDefault();
+            if (x == null) return;
+            var p = a.Def.P; double u = MurderHash.U01(S, "letter-kind:" + ch);
+            string kind = !string.IsNullOrEmpty(a.Def.Secret) && u < 0.4 ? "secret" : p.Fearfulness >= 0.45f && u < 0.75 ? "threat" : "rival";
+            var k = S.K(ch); k.Facts.Add($"letter:{kind}:{x.Id}");
+            switch (kind)
+            {
+                case "secret": k.Facts.Add("knows-my-secret:" + x.Id); Relations.Change(S, ch, x.Id, fear: 0.12f, trust: -0.1f, memory: "저택의 편지 — 그 사람이 내 과거를 알고 있다고 했다"); break;
+                case "threat": k.Facts.Add("threat:" + x.Id); Relations.Change(S, ch, x.Id, fear: 0.22f, trust: -0.12f, memory: "저택의 편지 — 그 사람이 나를 지켜보고 있다고 했다"); break;
+                default: Relations.Change(S, ch, x.Id, jealous: 0.3f, grudge: 0.15f, like: -0.08f, memory: "저택의 편지 — 내 소원과 그 사람의 소원은 함께 이루어지지 않는다고 했다"); break;
+            }
+            var bed = S.Layout.BedroomOf(ch);
+            if (bed != null)
+            {
+                var it = new Item { Id = S.NewId("it"), Type = "Envelope", Name = "저택의 편지", Owner = ch, Pos = sim.RandomPointIn(bed, S.R(Stream.Life)), Room = bed.Id };
+                it.Surface.Add($"houseletter:{kind}:{x.Id}"); S.Items[it.Id] = it;
+                S.Emit(GameEventType.ItemMoved, null, data: it.Id, text: "spawn", pos: it.Pos);
+            }
+            S.Log("HouseLetter", Cast.Butler, ch, data: kind + ":" + x.Id, secret: true);
+        }
+
+        /// <summary>How much further the personal letter wears the chosen one's wall (plus the gap between their restraint and the
+        /// thinnest in the house).</summary>
+        public const float ChosenWear = 0.3f;
+        /// <summary>The resident the house leaned on hardest this loop (the sample's personal letter), or null.</summary>
+        public static string Chosen(GameState S) => S.Actors.Values.Where(a => S.Flags.ContainsKey($"chosen:{S.Loop}:{a.Id}")).Select(a => a.Id).OrderBy(x => x, StringComparer.Ordinal).FirstOrDefault();
+        /// <summary>Whom the house leans on: one of the half of the residents whose restraint is thinnest this loop (Conscience.Base —
+        /// their own morality, fear, empathy and this loop's state of mind), drawn by how much they want their wish. A different
+        /// resident each game and each loop, so the first to break is never fixed by the cast list alone, and never someone the
+        /// letter could not move.</summary>
+        static string PickChosen(GameState S)
+        {
+            var living = S.LivingNpcs.ToList(); if (living.Count == 0) return null;
+            var cands = living.OrderBy(a => Conscience.Base(S, a)).ThenBy(a => a.Id, StringComparer.Ordinal).Take(Math.Max(1, (living.Count + 1) / 2))
+                              .OrderBy(a => a.Id, StringComparer.Ordinal).Select(a => (id: a.Id, w: 0.3 + a.Def.P.WishDesire)).ToList();
+            double u = MurderHash.U01(S, "house-chosen") * cands.Sum(x => x.w);
+            foreach (var (id, w) in cands) { if (u < w) return id; u -= w; }
+            return cands[cands.Count - 1].id;
         }
 
         // ------------------------------------------------------------------ 2 과거의 봉투 (CH06, imposed)

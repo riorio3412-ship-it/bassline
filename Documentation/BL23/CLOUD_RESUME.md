@@ -26,6 +26,7 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
 4) 단계마다 검증: SimTests에서 premise 20260926 9, life, campaign 20260926 6,
    debate 20260926 smart, "voice lint out.txt"를 돌린다.
    faults=0, 세이브 왕복 IDENTICAL, 보이스 팩 위반 0이어야 한다.
+   살인이 바뀌는 작업이면 "firsts 1 40 9 active"로 첫 살인 분포도 본다(한 범인이 35%를 넘지 않게).
 5) 단계마다 기록: 통과하면 커밋·푸시(브랜치 claude/ecstatic-mccarthy-w08ico, 기존 커밋 수정 금지).
    CloudWorkLog.md "기록"에 한 줄 추가. 결정은 DecisionLog.md에 D-0xx로 추가.
 6) 지킬 것:
@@ -37,8 +38,11 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
 ```
 
 **어디까지 했나 (2026-09-28 기준)**
-- 설계 문서 `SocialEventsDesign.md`까지 커밋했다.
-- 구현은 §6의 1단계(파벌)부터 시작한다. 이후 진행은 `CloudWorkLog.md` "기록"의 마지막 줄을 본다.
+- §6의 1~3단계(파벌, 저택 행사, 주민 모임 장면)는 끝났다.
+- 4단계(심판 연결)는 보물찾기 쪽이 끝났다: 구역 알리바이, 구역표 은판, 구역 밖 목격 은판.
+  남은 것: 가면의 밤 목격 익명화와 가면 오인 은판, 파벌 항의.
+- 첫 살인 다양화(저택의 편지)와 결정성 버그 수정도 했다. 측정 도구는 `firsts`, `staticcheck` 모드다.
+- 자세한 진행은 `CloudWorkLog.md` "기록"의 마지막 줄들을 본다.
 
 ## 지금 상태
 - **저장소:** `riorio3412-ship-it/bassline`
@@ -93,23 +97,37 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
     'Assets/BASSLINE/BL23/Sim/Content/Lines_NPC00.cs',
     'Assets/BASSLINE/BL23/Sim/Content/Lines_Premise.cs',
     'Assets/BASSLINE/BL23/Sim/Content/Lines_Premise.cs.meta',
+    'Assets/BASSLINE/BL23/Sim/Content/Lines_Social.cs',
+    'Assets/BASSLINE/BL23/Sim/Content/Lines_Social.cs.meta',
     'Assets/BASSLINE/BL23/Sim/Content/Voice/Voice_Traits.cs',
     'Assets/BASSLINE/BL23/Sim/Content/Voice/Voice_Traits.cs.meta',
     'Assets/BASSLINE/BL23/Sim/Data/Cast.cs',
+    'Assets/BASSLINE/BL23/Sim/Life/Factions.cs',
+    'Assets/BASSLINE/BL23/Sim/Life/Factions.cs.meta',
+    'Assets/BASSLINE/BL23/Sim/Life/HouseEvents.cs',
+    'Assets/BASSLINE/BL23/Sim/Life/HouseEvents.cs.meta',
     'Assets/BASSLINE/BL23/Sim/Life/Life.cs',
     'Assets/BASSLINE/BL23/Sim/Life/LifeBanter.cs',
+    'Assets/BASSLINE/BL23/Sim/Life/LifeData.cs',
     'Assets/BASSLINE/BL23/Sim/Life/LifeDialogue.cs',
+    'Assets/BASSLINE/BL23/Sim/Life/LifeFest.cs',
     'Assets/BASSLINE/BL23/Sim/Life/LifeHearts.cs',
     'Assets/BASSLINE/BL23/Sim/Life/LifeTable.cs',
+    'Assets/BASSLINE/BL23/Sim/Murder/CaseApi.cs',
     'Assets/BASSLINE/BL23/Sim/Murder/Conscience.cs',
     'Assets/BASSLINE/BL23/Sim/Murder/Conscience.cs.meta',
+    'Assets/BASSLINE/BL23/Sim/Murder/Initiative.cs',
+    'Assets/BASSLINE/BL23/Sim/Murder/InitiativeDesign.cs',
     'Assets/BASSLINE/BL23/Sim/Murder/InitiativeMotives.cs',
+    'Assets/BASSLINE/BL23/Sim/Murder/InitiativeStrike.cs',
     'Assets/BASSLINE/BL23/Sim/State/Enums.cs',
+    'Assets/BASSLINE/BL23/Sim/State/GameState.cs',
     'Assets/BASSLINE/BL23/Sim/State/State.cs',
     'Assets/BASSLINE/BL23/Sim/Systems/Cases.cs',
     'Assets/BASSLINE/BL23/Sim/Systems/FurnitureChanges.cs',
     'Assets/BASSLINE/BL23/Sim/Systems/FurnitureChanges.cs.meta',
     'Assets/BASSLINE/BL23/Sim/Systems/Gore.cs',
+    'Assets/BASSLINE/BL23/Sim/Systems/Grammars.cs',
     'Assets/BASSLINE/BL23/Sim/Systems/HousePush.cs',
     'Assets/BASSLINE/BL23/Sim/Systems/HousePush.cs.meta',
     'Assets/BASSLINE/BL23/Sim/Systems/Hunger.cs',
@@ -144,13 +162,17 @@ BASSLINE(BL23) 작업을 이어서 해 줘. 순서:
     'Documentation/BL23/CLOUD_RESUME.md',
     'Documentation/BL23/CharacterBible.md',
     'Documentation/BL23/CloudWorkLog.md',
+    'Documentation/BL23/DecisionLog.md',
     'Documentation/BL23/HANDOFF.md',
     'Documentation/BL23/ImplementationStatus.md',
+    'Documentation/BL23/SocialEventsDesign.md',
     'ImplementationStatus.md',
     'Tests/BL23/SimTests/DebateDump.cs',
     'Tests/BL23/SimTests/Extra.cs',
+    'Tests/BL23/SimTests/FirstsScan.cs',
     'Tests/BL23/SimTests/FurnitureKnowledgeTest.cs',
-    'Tests/BL23/SimTests/PremiseTest.cs'
+    'Tests/BL23/SimTests/PremiseTest.cs',
+    'Tests/BL23/SimTests/StaticCheck.cs'
   )
   $tmp = Join-Path $env:TEMP 'bassline_cloud_apply'
   if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }

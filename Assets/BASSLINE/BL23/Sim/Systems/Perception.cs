@@ -45,6 +45,7 @@ namespace BL23.Sim
             if (r.Type == RoomType.Courtyard) l = Math.Max(l, S.IsNight ? 0.25f : 0.9f);
             // CH03 blackout windows handled by circuit mask; emergency lights on passages
             if (RoomInfo.IsPassage(r.Type)) l = Math.Max(l, 0.1f);
+            if (S.DarkRooms.Count > 0 && S.DarkRooms.Contains(room)) l = Math.Min(l, r.Type == RoomType.Chapel ? 0.12f : 0.08f);   // the house's evening: candles, the stars, the toast
             return MathX.Clamp01(l);
         }
 

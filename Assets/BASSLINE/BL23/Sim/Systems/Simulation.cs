@@ -50,7 +50,7 @@ namespace BL23.Sim
             S.FloorLocked = S.FloorPreset;
             S.Layout = LayoutGenerator.Generate(S.Rng.CampaignSeed, loop, S.Rng);
             S.Actors.Clear(); S.Items.Clear(); S.Traces.Clear(); S.Know.Clear(); S.Rels.Clear(); S.Plans.Clear(); S.Incidents.Clear(); S.Goals.Clear();
-            S.Announcements.Clear(); S.Replays.Clear(); S.Trial = null; S.Ledger.Clear(); S.CircuitMask = -1; S.Darkness = 0; S.Noise = 0; S.ReplayBuf.Clear();
+            S.Announcements.Clear(); S.Replays.Clear(); S.Trial = null; S.Ledger.Clear(); S.CircuitMask = -1; S.Darkness = 0; S.Noise = 0; S.ReplayBuf.Clear(); S.DarkRooms.Clear();
             foreach (var key in S.Flags.Keys.Where(k => !k.StartsWith("persist:")).ToList()) S.Flags.Remove(key);
             S.PressRam = 0; S.PressPowered = true; S.PressVictim = null; S.PressFireAt = -1;
             SpawnActors();

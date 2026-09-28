@@ -163,17 +163,34 @@ namespace BL23.Sim
                 st.ClaimText = K($"{T(st.ClaimFrom)}부터 {S.RoomName(sc.AlibiRoom)}에서 {N(sc.AlibiWitness)}와(과) 같이 있었어요. {N(sc.AlibiWitness)}한테 물어보세요.");
                 st.ClaimWith.Add(sc.AlibiWitness);
             }
+            else if (sc != null && sc.Alibi == "zone" && sc.AlibiRoom >= 0)
+            {
+                st.ClaimRoom = sc.AlibiRoom; st.ClaimFrom = kt - 25; st.ClaimTo = kt + 20; st.ClaimText = ZoneClaim(S, sc.AlibiRoom);
+            }
             else
             {
                 int room = plan != null && plan.AlibiClaimRoom >= 0 ? plan.AlibiClaimRoom : plan != null && plan.AlibiRoom >= 0 ? plan.AlibiRoom : S.Layout.BedroomOf(me)?.Id ?? -1;
                 st.ClaimRoom = room; st.ClaimFrom = kt - 25; st.ClaimTo = kt + 20;
-                st.ClaimText = room >= 0 && S.Layout.Room(room)?.Type == RoomType.Bedroom && S.Layout.Room(room)?.Owner == me ? K($"{T(kt - 25)}쯤엔 제 방에 혼자 있었어요. 증명할 사람은 없지만요.")
-                             : K($"{T(kt - 25)}쯤엔 {S.RoomName(room)}에 있었어요.");
+                st.ClaimText = ClaimAt(S, me, room, kt);
             }
             // company the culprit can name (their own sightings in the claimed room around the window)
-            if (st.ClaimRoom >= 0 && S.Know.TryGetValue(me, out var k))
-                foreach (var g in k.Sightings.Where(s => s.Room == st.ClaimRoom && s.T1 >= st.ClaimFrom && s.T0 <= st.ClaimTo && s.IdConf > 0.5f && s.Target != inc.Victim && !s.Dead).Select(s => s.Target).Distinct().OrderBy(x => x, StringComparer.Ordinal).Take(3))
-                    if (!st.ClaimWith.Contains(g)) st.ClaimWith.Add(g);
+            List<string> Company(int room) => room >= 0 && S.Know.TryGetValue(me, out var k)
+                ? k.Sightings.Where(s => s.Room == room && s.T1 >= st.ClaimFrom && s.T0 <= st.ClaimTo && s.IdConf > 0.5f && s.Target != inc.Victim && s.Target != me && !s.Dead).Select(s => s.Target).Distinct().OrderBy(x => x, StringComparer.Ordinal).Take(3).ToList()
+                : new List<string>();
+            // never a confession: a claimed room that is the scene itself with no crowd there at the deed (a house blackout's "crowd"
+            // that was the victim alone, a moment in the victim's own room, a plan that never reached its alibi step) becomes where
+            // they say they were instead — the zone the chart posted them to during a treasure hunt, else the last other room they
+            // were in before the deed, else their own room. A meal or an evening where everyone sat together stays as it is.
+            int kr = p.Truth.KillRoom, fr = p.Truth.FoundRoom;
+            bool gathering = sc != null && (sc.Moment == "hosted" || sc.Moment == "joined" || sc.Moment == "meal");
+            int crowdAtKill = S.Know.TryGetValue(me, out var km) ? km.Sightings.Where(s => s.Room == st.ClaimRoom && s.T1 >= kt - 5 && s.T0 <= kt + 5 && s.IdConf > 0.5f && s.Target != inc.Victim && s.Target != me && !s.Dead).Select(s => s.Target).Distinct().Count() : 0;
+            if (st.ClaimRoom < 0 || ((st.ClaimRoom == kr || st.ClaimRoom == fr) && !gathering && crowdAtKill < 2))
+            {
+                st.ClaimWith.Clear(); st.ClaimFrom = kt - 25; st.ClaimTo = kt + 20;
+                if (HouseEvents.HuntZoneAt(S, me, kt, out int hz, out _, out _) && hz != kr && hz != fr) { st.ClaimRoom = hz; st.ClaimText = ZoneClaim(S, hz); }
+                else { st.ClaimRoom = RoomBefore(S, me, kt, kr, fr); st.ClaimText = ClaimAt(S, me, st.ClaimRoom, kt); }
+            }
+            foreach (var g in Company(st.ClaimRoom)) if (!st.ClaimWith.Contains(g)) st.ClaimWith.Add(g);
             // the theory they push
             string sg = sc?.Scapegoat ?? ImprovisedScapegoat(S, inc);
             st.Scapegoat = sg;
@@ -186,6 +203,28 @@ namespace BL23.Sim
             else if (sg != null) st.Theory = K($"{N(sg)}이(가) 한 거예요. {st.ScapegoatCase}");
             else st.Theory = K("누가 했는지는 모르겠어요. 하지만 저는 아니에요.");
             st.Account = K(st.ClaimText + " " + (sc != null && sc.Approach == "errand" ? $"{v}이(가) {sc.Pretext}을(를) 가지러 간 뒤로는 못 봤어요. " : "") + (sg != null ? st.Theory : ""));
+        }
+
+        static string ClaimAt(GameState S, string me, int room, double kt)
+            => room >= 0 && S.Layout.Room(room)?.Type == RoomType.Bedroom && S.Layout.Room(room)?.Owner == me ? K($"{T(kt - 25)}쯤엔 제 방에 혼자 있었어요. 증명할 사람은 없지만요.")
+             : K($"{T(kt - 25)}쯤엔 {S.RoomName(room)}에 있었어요.");
+
+        /// <summary>The treasure hunt's alibi: the chart posted everyone alone, so it is the one thing anyone can say.</summary>
+        static string ZoneClaim(GameState S, int zone) => K($"보물찾기 동안엔 쭉 제 구역, {S.RoomName(zone)}에 있었어요. 구역표대로요. 혼자였으니 증명할 사람은 없지만요.");
+
+        /// <summary>The last room (not a passage, not the scene) the culprit entered in the two hours before the deed, else their own
+        /// room, else the lounge.</summary>
+        static int RoomBefore(GameState S, string me, double kt, int kr, int fr)
+        {
+            int best = -1;
+            foreach (var e in S.Ledger.Where(e => e.Type == "Enter" && e.Actor == me && e.Clock <= kt && e.Clock >= kt - 120).OrderBy(e => e.Seq))
+            {
+                var r = S.Layout.Room(e.Room); if (r == null || e.Room == kr || e.Room == fr || RoomInfo.IsPassage(r.Type)) continue;
+                best = e.Room;
+            }
+            if (best >= 0) return best;
+            var bed = S.Layout.BedroomOf(me); if (bed != null && bed.Id != kr && bed.Id != fr) return bed.Id;
+            return S.Layout.Rooms.Where(r => r.Id != kr && r.Id != fr && (r.Type == RoomType.Lounge || r.Type == RoomType.Library || r.Type == RoomType.Dining)).OrderBy(r => r.Id).Select(r => r.Id).DefaultIfEmpty(-1).First();
         }
 
         static string ImprovisedScapegoat(GameState S, Incident inc)
@@ -228,6 +267,8 @@ namespace BL23.Sim
                 if (!S.Know.TryGetValue(x.Id, out var kx) || x.Id == me) continue;
                 if (kx.Sightings.Any(s => s.Target == me && s.Room == p.Truth.KillRoom && Math.Abs(s.T0 - kt) < 25 && s.IdConf > 0.4f)) w.BrokenBy.Add("witness:" + x.Id);
                 else if (kx.Facts.Any(f => f.StartsWith($"left-gathering:{me}:") || f.StartsWith($"left-table:{me}:"))) w.BrokenBy.Add("witness:" + x.Id);
+                // seen anywhere but the claimed room while the claim runs (a hunter out of their zone, a walk through the hall)
+                else if (p.Story.ClaimRoom >= 0 && kx.Sightings.Any(s => s.Target == me && s.Room != p.Story.ClaimRoom && s.IdConf > 0.4f && s.Disguise == null && s.T0 <= p.Story.ClaimTo - 1 && s.T1 >= p.Story.ClaimFrom + 1)) w.BrokenBy.Add("witness:" + x.Id);
             }
             if (sc != null && sc.ClockF >= 0) w.BrokenBy.Add("furniture:" + sc.ClockF);
             if (sc != null && sc.Garb != null) w.BrokenBy.Add("item:" + sc.Garb);

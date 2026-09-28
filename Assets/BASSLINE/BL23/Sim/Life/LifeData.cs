@@ -25,6 +25,11 @@ namespace BL23.Sim
         static bool _init;
         static Dictionary<string, LScene> _byId;
 
+        // The registry is complete before anything reads it: the pair ticker walks Pairs directly, and while that ran on an
+        // empty list until some other call happened to load it, the first game of a session had no pair scenes for its first
+        // hours and a second game in the same session played differently from the first (StaticCheck).
+        static LifeData() { Ensure(); }
+
         public static void Ensure()
         {
             if (_init) return; _init = true;

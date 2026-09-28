@@ -47,7 +47,7 @@ namespace BL23.Sim
             var d = new CaseDeck { Incident = inc.Id, Loop = S.Loop, Chapter = S.Chapter, Frozen = S.Clock, FrozenSeq = S.Seq, Source = C.Pack != null ? "pack,legacy" : "legacy" };
             double u = MurderHash.U01(S, "deck-fakes:" + inc.Id); d.FakeTarget = u < 0.25 ? 4 : u < 0.75 ? 5 : 6;
             var cands = new List<Plate>();
-            FeedBody(C, cands); FeedTraces(C, cands); FeedFurniture(C, cands); FeedItems(C, cands); FeedWitness(C, cands); FeedCulpritSeen(C, cands); FeedAlibi(C, cands); FeedCoincidence(C, cands); FeedHeld(C, cands);
+            FeedBody(C, cands); FeedTraces(C, cands); FeedFurniture(C, cands); FeedItems(C, cands); FeedWitness(C, cands); FeedCulpritSeen(C, cands); FeedHunt(C, cands); FeedAlibi(C, cands); FeedCoincidence(C, cands); FeedHeld(C, cands);
             BuildClaims(C, d, cands);
             LinkPlates(C, d, cands);
             Select(C, d, cands);
@@ -278,6 +278,44 @@ namespace BL23.Sim
                         p.Back = LineBank.FixParticles($"{G(C.Culprit)}의 옷에 묻은 건 피였다 — 공격한 뒤였다."); cands.Add(p);
                     }
                 }
+            }
+        }
+
+        // ---- the treasure hunt (HouseEvents): the chart the house read out that morning — who searched where, alone — is on record;
+        //      and anyone who saw the culprit anywhere but their posted zone while the search ran has broken the one alibi a hunt allows
+        static void FeedHunt(CaseFacts C, List<Plate> cands)
+        {
+            var S = C.S; var g = HouseEvents.HuntAt(S, C.KillClock); if (g == null || C.Culprit == null) return;
+            double at = g.Cur.Start + 10, end = g.Cur.Start + (HouseEvents.KindOf(g)?.Len ?? 90);
+            int vz = HouseEvents.ZoneOf(S, g, C.VictimId), cz = HouseEvents.ZoneOf(S, g, C.Culprit);
+            if (vz < 0 && cz < 0) return;
+            // the chart: the victim's line, the culprit's among a few others (in the order the house read them), the rest counted
+            var posted = C.People.Concat(new[] { C.VictimId }).Where(x => HouseEvents.ZoneOf(S, g, x) >= 0).Distinct().ToList();
+            var shown = posted.Where(x => x != C.VictimId).OrderBy(x => x == C.Culprit ? 0 : 1).ThenBy(x => MurderHash.U01(S, "huntchart:" + C.Inc.Id + ":" + x)).ThenBy(x => x, StringComparer.Ordinal).Take(4)
+                              .OrderBy(x => x, StringComparer.Ordinal).ToList();
+            if (vz >= 0) shown.Insert(0, C.VictimId);
+            string Line(string x) => $"{G(x)} — {S.RoomName(HouseEvents.ZoneOf(S, g, x))}";
+            int more = posted.Count - shown.Count;
+            var props = shown.Select(x => new Prop { Kind = PropKind.Invited, A = x, Room = HouseEvents.ZoneOf(S, g, x), T0 = at, T1 = end, Value = "보물찾기 구역표" }).ToList();
+            var chart = NewPlate(C, "record:huntchart:" + g.Id, PlateKind.Record, PlateRole.Confirm, true, "보물찾기 구역표",
+                $"{ClockFmt.Vague(at)}부터 {ClockFmt.Vague(end)}까지, 각자 혼자. {string.Join(" · ", shown.Select(Line))}{(more > 0 ? $" 외 {TrialSystem.Kor(more)} 명" : "")}", vz >= 0 ? vz : C.KillRoom, at, end, props);
+            chart.Back = vz >= 0 ? LineBank.FixParticles($"그 시각 {G(C.VictimId)}이(가) {S.RoomName(vz)}에 혼자 있다는 건 구역표를 들은 사람 누구나 알았다. 구역표는 가라는 곳이지, 있었다는 증거는 아니다.")
+                                 : "구역표는 가라는 곳이지, 있었다는 증거는 아니다.";
+            cands.Add(chart);
+            if (cz < 0) return;
+            // the culprit off their zone while the claim runs (the scene itself is FeedWitness's)
+            var st = C.Pack?.Story; double c0 = st != null && st.ClaimRoom == cz ? st.ClaimFrom : C.KillClock - 25, c1 = st != null && st.ClaimRoom == cz ? st.ClaimTo : C.KillClock + 20;
+            foreach (var w in C.Npcs.Where(x => x != C.Culprit).OrderBy(x => x, StringComparer.Ordinal))
+            {
+                var s = S.K(w).Sightings.Where(x => x.Target == C.Culprit && x.IdConf >= 0.6f && x.Disguise == null && !x.Dead && x.Room != cz && x.Room != C.KillRoom && x.Room != C.FoundRoom
+                                                 && x.T1 >= Math.Max(at + 2, c0 + 1) && x.T0 <= Math.Min(end, c1 - 1))
+                                   .OrderBy(x => Math.Abs(x.T0 - C.KillClock)).ThenBy(x => x.T0).FirstOrDefault();
+                if (s == null) continue;
+                var p = NewPlate(C, "talk:" + w + ":zone:" + C.Culprit, PlateKind.Witness, PlateRole.Link, true, $"{G(w)}이(가) 본 것", $"{ClockFmt.Anchor(s.T0)}, {S.RoomName(s.Room)}. 보물찾기 중인 {G(C.Culprit)} — {G(w)}", s.Room, s.T0, s.T1,
+                    new[] { new Prop { Kind = PropKind.AtPlace, A = C.Culprit, Room = s.Room, T0 = s.T0, T1 = s.T1 } });
+                p.Witness = w; p.Seen = C.Culprit; p.Title = LineBank.FixParticles(p.Title); p.Face = LineBank.FixParticles(p.Face);
+                p.Back = LineBank.FixParticles($"구역표가 {G(C.Culprit)}에게 준 곳은 {S.RoomName(cz)} — 그런데 그 시각 {G(C.Culprit)}은(는) {S.RoomName(s.Room)}에 있었다.");
+                cands.Add(p); return;
             }
         }
 

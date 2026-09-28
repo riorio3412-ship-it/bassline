@@ -98,7 +98,7 @@ namespace BL23.Sim
                             plan.Steps.Add(new PlanStep { Kind = "S_Stash", Room = -1 });
                             plan.Steps.Add(new PlanStep { Kind = "RestorePower", Room = pr?.Id ?? -1 });
                             FrameSteps(plan, sc);
-                            Back(sc.MomentRoom);
+                            Back(sc.Alibi == "zone" ? sc.AlibiRoom : sc.MomentRoom);
                         }
                         else
                         {
@@ -108,8 +108,9 @@ namespace BL23.Sim
                             plan.Steps.Add(new PlanStep { Kind = "S_Stash", Room = -1, Note = "here" });
                             FrameSteps(plan, sc);
                             plan.Steps.Add(new PlanStep { Kind = "S_Resume" });
+                            if (sc.Alibi == "zone") plan.Steps.Add(new PlanStep { Kind = "S_Return", Room = sc.AlibiRoom });   // back to one's own zone of the hunt
                         }
-                        plan.AlibiRoom = sc.MomentRoom >= 0 ? sc.MomentRoom : -1;
+                        plan.AlibiRoom = sc.Alibi == "zone" ? sc.AlibiRoom : sc.MomentRoom >= 0 ? sc.MomentRoom : -1;
                         break;
                     }
                 case "serve":
@@ -138,7 +139,7 @@ namespace BL23.Sim
                         plan.Steps.Add(new PlanStep { Kind = sc.Frame == "weapon" ? "S_Stash" : (U(S, plan.Id + ":hw") < 0.5 ? "HideWeapon" : "WashWeapon"), Room = sc.KillRoom, Note = sc.Frame == "weapon" ? "leave" : null });
                         FrameSteps(plan, sc);
                         plan.Steps.Add(new PlanStep { Kind = "CleanUp" });
-                        if (sc.Alibi == "witness" || sc.Alibi == "clock") plan.Steps.Add(new PlanStep { Kind = "S_Return", Room = sc.AlibiRoom }); else plan.Steps.Add(new PlanStep { Kind = "Alibi" });
+                        if (sc.Alibi == "witness" || sc.Alibi == "clock" || sc.Alibi == "zone") plan.Steps.Add(new PlanStep { Kind = "S_Return", Room = sc.AlibiRoom }); else plan.Steps.Add(new PlanStep { Kind = "Alibi" });
                         plan.KillRoom = sc.KillRoom; plan.AlibiRoom = alibiRoom;
                         break;
                     }
@@ -155,7 +156,7 @@ namespace BL23.Sim
                         plan.Steps.Add(new PlanStep { Kind = sc.Frame == "weapon" ? "S_Stash" : (U(S, plan.Id + ":hw") < 0.55 ? "HideWeapon" : "WashWeapon"), Room = -1, Note = sc.Frame == "weapon" ? "leave" : null });
                         FrameSteps(plan, sc);
                         plan.Steps.Add(new PlanStep { Kind = "CleanUp" });
-                        if (sc.Alibi == "witness" || sc.Alibi == "clock") plan.Steps.Add(new PlanStep { Kind = "S_Return", Room = sc.AlibiRoom }); else plan.Steps.Add(new PlanStep { Kind = "Alibi" });
+                        if (sc.Alibi == "witness" || sc.Alibi == "clock" || sc.Alibi == "zone") plan.Steps.Add(new PlanStep { Kind = "S_Return", Room = sc.AlibiRoom }); else plan.Steps.Add(new PlanStep { Kind = "Alibi" });
                         plan.KillRoom = sc.KillRoom; plan.AlibiRoom = alibiRoom;
                         if (sc.Moment == "investigation") plan.Deadline = S.Ch.InvestigationEnd - 4;
                         break;
@@ -195,7 +196,7 @@ namespace BL23.Sim
                         if (plan.Grammar != m) return null;   // the method fell back to a plain attack: not what was designed
                         FrameSteps(plan, sc);
                         plan.Steps.Add(new PlanStep { Kind = "CleanUp" });
-                        if ((sc.Alibi == "witness" || sc.Alibi == "clock") && sc.AlibiRoom >= 0) plan.Steps.Add(new PlanStep { Kind = "S_Return", Room = sc.AlibiRoom });
+                        if ((sc.Alibi == "witness" || sc.Alibi == "clock" || sc.Alibi == "zone") && sc.AlibiRoom >= 0) plan.Steps.Add(new PlanStep { Kind = "S_Return", Room = sc.AlibiRoom });
                         plan.Deadline = Math.Max(plan.Deadline, sc.MomentEnd + 20);
                         break;
                     }

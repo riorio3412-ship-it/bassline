@@ -47,6 +47,9 @@ namespace BL23.Sim
         static bool Knows(GameState S, Actor a, Room r) => r != null && S.K(a.Id).Facts.Contains("visited:" + r.Id);
         static bool Plain(Room r) => r != null && !RoomInfo.IsPassage(r.Type) && r.Type != RoomType.Bedroom && r.Type != RoomType.Elevator && r.Type != RoomType.ButlerRoom && r.Type != RoomType.Courtroom && !r.Void;
 
+        /// <summary>Tests only: every (moment, approach) a design weighed, with its score.</summary>
+        public static Action<string> DesignTrace;
+
         // ================================================================== design
         static bool Design(Simulation sim, Scheme sc)
         {
@@ -59,6 +62,7 @@ namespace BL23.Sim
                 foreach (var d in Approaches(sim, sc, a, v, st, m, weapons))
                 {
                     d.Score = ScoreDesign(sim, sc, a, v, st, d);
+                    DesignTrace?.Invoke($"{sc.Id} {a.Id}->{v.Id} {m.Kind}{(m.EventKind != null ? "(" + m.EventKind + ")" : "")} {d.Approach} {d.Score:0.00}{(m.VictimIn ? " vin" : "")}");
                     if (best == null || d.Score > best.Score + 1e-9) best = d;
                 }
             if (best == null) { S.Dev($"scheme {sc.Id} no design ({moments.Count} moments, {weapons.Count} weapons)"); return false; }
@@ -104,13 +108,14 @@ namespace BL23.Sim
                     list.Add(new MomentCand { Kind = "hosted", EventKind = hk.Id, Label = hk.Label, Room = room.Id, At = start, End = end, Strike = start - 5, Crowd = true, Dark = hk.Dark, Serve = hk.Serve, VictimIn = !v.IsPlayer && WouldCome(S, v, a), Hosted = true });
                 }
             // 2) an evening they were invited to (someone else's, a festival, an exchange)
-            foreach (var g in S.Gatherings.Where(g => !g.Done && !g.Cancelled && g.Host != a.Id).OrderBy(g => g.Id, StringComparer.Ordinal))
+            foreach (var g in S.Gatherings.Where(g => !g.Done && !g.Cancelled && g.Host != a.Id && g.Kind != "house:hunt").OrderBy(g => g.Id, StringComparer.Ordinal))   // the hunt's briefing is not the moment; the search is (2b)
             {
                 if (!g.Status.TryGetValue(a.Id, out var s0) || !(s0 == "accepted" || s0 == "attended" || s0 == "invited")) continue;
-                var R = g.Cur; if (R.Start < from - 5 || R.Start > now + 360) continue;
+                var R = g.Cur; if (R.Start < from - 5 || R.Start > now + (HouseEvents.IsHouse(g) ? 720 : 360)) continue;   // the house announces its evening in the morning
                 bool vin = g.Status.TryGetValue(v.Id, out var vs) && (vs == "accepted" || vs == "attended" || vs == "host");
                 bool dark = S.RuleActive("CH03") && S.Rule("CH03").Times.Any(t => t > R.Start + 10 && t < R.End - 10) || HouseEvents.Dark(S, g);   // the house's toast, a dark evening
-                list.Add(new MomentCand { Kind = "joined", Ref = g.Id, Label = g.Label, Room = R.Room, At = R.Start, End = R.End, Strike = Math.Max(now + 2, R.Start - 5), Crowd = true, VictimIn = vin, Dark = dark, DarkBy = dark ? "house" : null, Serve = false });
+                var hk = HouseEvents.KindOf(g);
+                list.Add(new MomentCand { Kind = "joined", Ref = g.Id, Label = g.Label, EventKind = hk != null ? "house:" + hk.Id : null, Room = R.Room, At = R.Start, End = hk != null ? R.Start + hk.Len : R.End, Strike = Math.Max(now + 2, R.Start - 5), Crowd = true, VictimIn = vin, Dark = dark || hk?.Dark != null, DarkBy = dark || hk?.Dark != null ? "house" : null, Serve = hk?.Id == "banquet" });
             }
             // 2b) the house's treasure hunt: where the victim searches, alone, is public (the chart read out in the morning)
             if (HouseEvents.HuntZone(S, v.Id, out var hz, out var hAt, out var hEnd) && hAt > from - 5 && hEnd - 20 > now)
@@ -242,6 +247,7 @@ namespace BL23.Sim
                     {
                         if (w != null && !pv) { int kr = ErrandRoom(sim, sc, a, m.Room); if (kr >= 0) Add("errand", w, kr); }
                         if (m.Dark && wq != null) Add("dark-strike", wq);
+                        if (m.Serve && poison != null && !pv) Add("serve", poison: poison.Id);   // the house's banquet: a glass raised for the toast
                     }
                     else if (wc != null) { var hb = HabitOf(S, a, v); if (hb.room >= 0 && ErrandPref(S.Layout.Room(hb.room).Type) >= 0.6) Add("slip-out", wc, hb.room); }
                     break;
@@ -379,6 +385,16 @@ namespace BL23.Sim
             double s = apk == "errand" ? 0.9 : apk == "slip-out" ? 0.75 : apk == "dark-strike" ? 0.85 : apk == "serve" ? 0.8 : apk == "rendezvous" ? 0.7 : apk == "ambush" ? 0.6 : apk == "visit" ? 0.45 : 0.72;
             s += m.Kind == "hosted" ? 0.3 : m.Kind == "joined" ? 0.2 : m.Kind == "house-dark" ? 0.45 : m.Kind == "long-dark" ? 0.35 : m.Kind == "noise" ? 0.25 : m.Kind == "meal" ? 0.2
                : m.Kind == "habit" ? 0.1 : m.Kind == "night-lock" ? 0.25 : m.Kind == "rendezvous" ? 0.05 : m.Kind == "investigation" ? 0.35 : 0;
+            // the house's own evenings are stages it set for exactly this (SocialEventsDesign §4): a chart that says who is alone
+            // where, masks that turn every witness's "I saw X" into "I saw a mask", a toast in the dark, a whole evening unlit
+            if (m.Kind == "hunt") s += 0.75 + (st.Style == "Practical" || st.Style == "Impulsive" ? 0.15 : 0) + (st.Style == "Meticulous" ? 0.1 : 0);   // alone, for an hour and a half, where everyone was told
+            if (m.EventKind != null && m.EventKind.StartsWith("house:", StringComparison.Ordinal))
+            {
+                s += 0.45;
+                if (m.EventKind == "house:masque" && (ap == "slip-out" || ap == "errand")) s += 0.35 + (st.Style == "Theatrical" ? 0.2 : 0);
+                if (m.EventKind == "house:banquet" && (ap == "dark-strike" || ap == "serve")) s += 0.25;
+                if ((m.EventKind == "house:stars" || m.EventKind == "house:vigil") && ap == "dark-strike") s += 0.25;
+            }
             // style
             switch (st.Style)
             {
@@ -444,7 +460,7 @@ namespace BL23.Sim
             sc.Head = d.Approach == "errand" ? "Errand" : d.Approach == "slip-out" ? "Gathering" : d.Approach == "dark-strike" ? "DarkStrike" : d.Approach == "serve" ? "Poison"
                     : d.Approach == "rendezvous" ? "Rendezvous" : d.Approach == "ambush" ? "Ambush" : d.Approach == "visit" ? "NightVisit" : d.Method;
             if (m.Hosted) { sc.EventKind = m.EventKind; sc.EventLabel = m.Label; sc.EventRoom = m.Room; sc.Var("hosted"); }
-            if (m.Kind == "joined") { sc.EventId = m.Ref; sc.EventLabel = m.Label; sc.EventRoom = m.Room; }
+            if (m.Kind == "joined") { sc.EventId = m.Ref; sc.EventLabel = m.Label; sc.EventRoom = m.Room; if (m.EventKind != null) sc.EventKind = m.EventKind; }
             if (m.Kind == "investigation") sc.Var("during-investigation");
             if (d.Approach == "dark-strike") { sc.DarkBy = m.DarkBy ?? (m.Hosted ? "helper" : "self"); if (m.Crowd || m.Kind == "house-dark") sc.Var("group-moment"); }
             if (d.Approach == "errand") sc.Pretext = PretextFor(S.Layout.Room(sc.KillRoom)?.Type ?? RoomType.Storage);
@@ -515,6 +531,12 @@ namespace BL23.Sim
         static void ChooseAlibi(Simulation sim, Scheme sc, Actor a, Actor v, SchemeStyle st)
         {
             var S = sim.S; var c = a.Def;
+            // the treasure hunt: the chart posted everyone alone to a room, so "I was in my zone" is the alibi the house hands out —
+            // go there first, be back there after (what breaks it: anyone who saw them anywhere else while the search ran)
+            if (sc.Moment != "hosted" && sc.Moment != "joined" && sc.Moment != "meal" && sc.Moment != "investigation"
+                && HouseEvents.HuntZoneAt(S, a.Id, sc.StrikeAt, out var hz, out var hAt, out _) && hz != sc.KillRoom
+                && !(HouseEvents.HuntZoneAt(S, v.Id, sc.StrikeAt, out var vz, out _, out _) && vz == hz))
+            { sc.Alibi = "zone"; sc.AlibiRoom = hz; sc.AlibiAt = hAt; sc.Var("zone-alibi"); return; }
             if (sc.Moment == "hosted" || sc.Moment == "joined" || sc.Moment == "meal" || sc.Approach == "dark-strike" || sc.Moment == "house-dark") { sc.Alibi = "crowd"; sc.AlibiRoom = sc.MomentRoom; }
             if (sc.Moment == "investigation") { sc.Alibi = "crowd"; return; }
             if (sc.Alibi == "crowd" && sc.Approach != "errand" && sc.Approach != "slip-out") return;

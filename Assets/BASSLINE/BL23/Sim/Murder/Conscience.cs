@@ -34,9 +34,15 @@ namespace BL23.Sim
         public static float Base(GameState S, Actor a)
         {
             var c = a.Def; float inh = c.P.Morality * 0.85f + c.P.Fearfulness * 0.1f + c.Empathy / 100f * 0.15f;
+            // the order is the character's; the spread is narrowed a quarter toward the middle, so the coldest resident is the
+            // likeliest to break but not a foregone first killer (FirstsScan: 도윤 was the first in ~45% of games)
+            inh = Spread + (inh - Spread) * 0.75f;
             if (S.Flags.TryGetValue("inh:" + a.Id, out var d)) inh = Math.Max(0.05f, inh + (float)d);   // who holds, who cracks, differs each loop
             return inh;
         }
+
+        /// <summary>The middle of the cast's restraint, toward which <see cref="Base"/> narrows the spread.</summary>
+        const float Spread = 0.55f;
 
         /// <summary>Restraint plus what is left of the wall — the inhibition both murder minds subtract.</summary>
         public static float Inhibit(GameState S, Actor a) => Base(S, a) + Wall(S, a.Id);

@@ -56,6 +56,28 @@ namespace BL23.Sim
             return false;
         }
 
+        /// <summary>The treasure hunt whose search was on at time t, or null.</summary>
+        public static Gathering HuntAt(GameState S, double t)
+            => S.Gatherings?.Where(g => g.Kind == "house:hunt" && !g.Cancelled && g.Revs.Count > 0 && t >= g.Cur.Start + 5 && t <= g.Cur.Start + (KindOf(g)?.Len ?? 90) + 5).OrderBy(g => g.Id, StringComparer.Ordinal).FirstOrDefault();
+        /// <summary>The room the chart posted this resident to in that hunt, or -1.</summary>
+        public static int ZoneOf(GameState S, Gathering g, string who) => g != null && who != null && S.Flags.TryGetValue($"hevzone:{g.Id}:{who}", out var r) ? (int)r : -1;
+
+        /// <summary>The zone this resident was posted to in a hunt that was on at time t — for the 심판, where the chart is on
+        /// record long after the search ended.</summary>
+        public static bool HuntZoneAt(GameState S, string who, double t, out int room, out double at, out double end)
+        {
+            room = -1; at = end = -1;
+            if (who == null || S.Gatherings == null) return false;
+            foreach (var g in S.Gatherings.Where(g => g.Kind == "house:hunt" && !g.Cancelled && g.Revs.Count > 0).OrderBy(g => g.Id, StringComparer.Ordinal))
+            {
+                if (!S.Flags.TryGetValue($"hevzone:{g.Id}:{who}", out var r)) continue;
+                double a = g.Cur.Start + 10, e = g.Cur.Start + (KindOf(g)?.Len ?? 90);
+                if (t < a - 5 || t > e + 5) continue;
+                room = (int)r; at = a; end = e; return true;
+            }
+            return false;
+        }
+
         /// <summary>Would this resident come to the house's evening? Their own mood and taste, the evening's nature, who else has
         /// said they are going (a friend pulls, someone they resent or fear pushes away), and where their faction's leader goes.
         /// The reason for a refusal is kept (fear · someone there · the crowd · the leader) — the table voices it.</summary>
@@ -160,6 +182,7 @@ namespace BL23.Sim
             S.Log("HouseEvent", Cast.Butler, room: room.Id, data: k.Id + ":" + g.Id);
             LFinc("lhev:total");
             Announce("y_hev_" + k.Id, slots, "hev:" + k.Id);
+            Initiative.OnHouseEvent(this, g);   // a schemer still preparing weighs the house's stage against their own
             return g;
         }
 
@@ -236,6 +259,9 @@ namespace BL23.Sim
         /// <summary>Each minute: the toast's darkness, a dark evening's lights, the masks, the search.</summary>
         void HouseEventMinute(int mod)
         {
+            // an evening called off while its room was dark: the lights come back
+            foreach (var g in (S.Gatherings ?? new List<Gathering>()).Where(g => g.Cancelled && HouseEvents.IsHouse(g) && S.Flags.ContainsKey($"hevoff:{g.Id}") && !S.Flags.ContainsKey($"hevon:{g.Id}")).ToList())
+            { S.Flags[$"hevon:{g.Id}"] = S.Clock; if (g.Revs.Count > 0) S.DarkRooms.Remove(g.Cur.Room); }
             foreach (var g in (S.Gatherings ?? new List<Gathering>()).Where(g => HouseEvents.IsHouse(g) && !g.Cancelled).ToList())
             {
                 var k = HouseEvents.KindOf(g); if (k == null) continue;
@@ -247,14 +273,14 @@ namespace BL23.Sim
                 if (off >= 0 && S.Clock >= off && S.Clock < on && !S.Flags.ContainsKey($"hevoff:{g.Id}") && S.Phase == Phase.Daily)
                 {
                     S.Flags[$"hevoff:{g.Id}"] = S.Clock;
-                    if (room.Circuit > 0) SetCircuit(room.Circuit, false, null);
+                    if (!S.DarkRooms.Contains(room.Id)) S.DarkRooms.Add(room.Id);   // this room only, whatever circuit it is on
                     S.Emit(GameEventType.Notice, text: k.Dark == "toast" ? "건배하는 순간, 연회장의 불이 꺼졌다" : k.Id == "vigil" ? "촛불만 남기고 불이 꺼졌다" : "별을 보려고 불을 껐다", key: "house_dark");
                     S.Log("HouseDark", Cast.Butler, room: room.Id, data: g.Id);
                 }
                 if (off >= 0 && S.Clock >= on && S.Flags.ContainsKey($"hevoff:{g.Id}") && !S.Flags.ContainsKey($"hevon:{g.Id}"))
                 {
                     S.Flags[$"hevon:{g.Id}"] = S.Clock;
-                    if (room.Circuit > 0) SetCircuit(room.Circuit, true, null);
+                    S.DarkRooms.Remove(room.Id);
                     S.Log("HouseLight", Cast.Butler, room: room.Id, data: g.Id);
                 }
                 // the masks: handed out at the door, taken back at the end (the masks stay in the hall)

@@ -46,6 +46,9 @@ namespace BL23.Sim
         public List<Loan> Loans = new List<Loan>();
         public List<Gathering> Gatherings = new List<Gathering>();
         public List<Faction> Factions = new List<Faction>();   // who holds together (Sim/Life/Factions.cs), recomputed each morning
+        /// <summary>Rooms the house has put out for one of its evenings (HouseEvents: the toast, a night of stars, the vigil's candles) —
+        /// the room alone, whatever its circuit (the grand hall is on the emergency circuit and never goes dark by itself).</summary>
+        public List<int> DarkRooms = new List<int>();
         public List<Request> Requests = new List<Request>();   // personal invitations and favours to 민혁 (Systems/Requests.cs)
         public List<Trap> Traps = new List<Trap>();
         public List<DeviceRecord> DeviceLog = new List<DeviceRecord>();

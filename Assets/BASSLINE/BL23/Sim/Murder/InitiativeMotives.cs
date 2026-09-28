@@ -101,7 +101,7 @@ namespace BL23.Sim
                 {
                     if (!f.StartsWith("knows-my-secret:")) continue; var t = f.Substring(16); if (!Valid(S, a, t)) continue;
                     float p = 0.42f + (1 - c.P.Honesty) * 0.35f + c.P.Pride * 0.12f + (S.HasRel(a.Id, t) ? S.R(a.Id, t).Fear * 0.3f : 0) - Block(S, a.Id, t) - inh;
-                    list.Add(new MotiveCand { Target = t, Motive = "secret", P = p, Trigger = K(k.Facts.Contains("envelope-about-me") ? $"자기 과거가 적힌 봉투가 {Name(t)}에게 갔다는 걸 알고" : $"{Name(t)}이(가) 자기 비밀을 안다는 걸 알고") });
+                    list.Add(new MotiveCand { Target = t, Motive = "secret", P = p, Trigger = K(k.Facts.Contains("letter:secret:" + t) ? $"저택의 편지가 {Name(t)}이(가) 자기 과거를 알고 있다고 알려 온 뒤로" : k.Facts.Contains("envelope-about-me") ? $"자기 과거가 적힌 봉투가 {Name(t)}에게 갔다는 걸 알고" : $"{Name(t)}이(가) 자기 비밀을 안다는 걸 알고") });
                 }
                 // 2) protect — the person I would die for is threatened (their secret in someone's hands, or they were attacked)
                 foreach (var x in S.Living.OrderBy(q => q.Id, StringComparer.Ordinal))
@@ -136,7 +136,7 @@ namespace BL23.Sim
                 if (!f.StartsWith("threat:")) continue; var t = f.Substring(7); if (!Valid(S, a, t)) continue;
                 float p = 0.35f + (S.HasRel(a.Id, t) ? S.R(a.Id, t).Fear : 0) * 0.6f + (1 - c.P.Morality) * 0.25f + c.P.Aggression * 0.2f - Block(S, a.Id, t) - inh * 0.7f;
                 var theirs = OpenOf(S, t);
-                list.Add(new MotiveCand { Target = t, Motive = "defense", P = p, Variant = theirs != null && theirs.Victim == a.Id ? "turnabout" : null, Trigger = K($"{Name(t)}이(가) 자기를 노리고 뭔가 준비한다는 걸 눈치채고, 먼저 움직이려고") });
+                list.Add(new MotiveCand { Target = t, Motive = "defense", P = p, Variant = theirs != null && theirs.Victim == a.Id ? "turnabout" : null, Trigger = K(k.Facts.Contains("letter:threat:" + t) ? $"저택의 편지가 {Name(t)}이(가) 자기를 지켜보고 있다고 알려 온 뒤로, 먼저 움직이려고" : $"{Name(t)}이(가) 자기를 노리고 뭔가 준비한다는 걸 눈치채고, 먼저 움직이려고") });
             }
             // 5) silence — someone saw me around my own first crime
             foreach (var inc in S.Incidents.Values.Where(i => i.Loop == S.Loop && i.Culprit == a.Id && i.Murder).OrderBy(i => i.Id, StringComparer.Ordinal))

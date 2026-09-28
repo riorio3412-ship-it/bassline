@@ -245,6 +245,25 @@ namespace BL23.Sim
             sc.State = "Designing"; sc.NextCheck = S.Clock + 20 + U(S, sc.Id + ":rdw" + sc.Redesigns) * 30;
         }
 
+        /// <summary>The house has announced an evening (HouseEvents): a schemer still preparing weighs it against their own design —
+        /// a toast in the dark, a hall of masks, a chart that says who searches alone where are stages nobody could set alone.
+        /// This is not a failure (no redesign is spent) and whatever is prepared and still useful is kept; the design scoring
+        /// decides whether the house's evening wins.</summary>
+        public static void OnHouseEvent(Simulation sim, Gathering g)
+        {
+            var S = sim.S; if (!Active(S) || g == null) return;
+            foreach (var sc in W(S).Schemes.Where(x => x.Open && x.Loop == S.Loop && x.State == "Preparing" && (x.StrikeAt < 0 || x.StrikeAt > S.Clock + 90)).ToList())
+            {
+                bool going = g.Status.TryGetValue(sc.Culprit, out var st) && (st == "accepted" || st == "invited");
+                bool posted = g.Kind == "house:hunt" && S.Flags.ContainsKey($"hevzone:{g.Id}:{sc.Victim}");
+                if (!going && !posted) continue;
+                sc.Log.Add(K($"{ClockFmt.DayHM(S.Clock)} 저택의 공지({g.Label})를 듣고 계획을 다시 저울질했다."));
+                S.Log("SchemeRevise", sc.Culprit, sc.Victim, data: sc.Id + " 저택의 공지를 듣고", secret: true);
+                foreach (var f in W(S).Favours) if (f.Scheme == sc.Id && !f.Done) f.Failed = true;
+                ClearDesign(sc); sc.State = "Designing"; sc.NextCheck = S.Clock + 5 + U(S, sc.Id + ":hev:" + g.Id) * 20;
+            }
+        }
+
         static void ClearDesign(Scheme sc)
         {
             sc.Moment = sc.MomentRef = sc.MomentText = sc.Approach = sc.Head = null; sc.MomentRoom = sc.KillRoom = sc.EventRoom = -1; sc.MomentAt = sc.MomentEnd = sc.StrikeAt = -1;
