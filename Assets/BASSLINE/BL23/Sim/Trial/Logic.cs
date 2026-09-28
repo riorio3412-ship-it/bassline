@@ -38,6 +38,9 @@ namespace BL23.Sim
                         { v.Result = Hit(LogicResult.Contradict); v.Rule = "LR03"; v.Why = $"그 시각 {Cast.GivenOf(who)}은(는) {S.RoomName(e.Room)}에 있었다{hearsay}"; return v; }
                         if (e.Kind == PropKind.SawActor && e.B == who && e.Item != "unsure" && e.Room != c.Room && Overlap(c.T0, c.T1, e.T0, e.T1, -1))
                         { v.Result = Hit(LogicResult.Contradict); v.Rule = "LR01"; v.Why = $"그 시각 {S.RoomName(e.Room)}에서 {Cast.GivenOf(who)}을(를) 봤다는 사람이 있다{hearsay}"; return v; }
+                        // a record that they were out of the claimed room for part of the claimed span (the house's door log of its evening)
+                        if (e.Kind == PropKind.NotAtPlace && e.A == who && e.Room >= 0 && e.Room == c.Room && Overlap(c.T0, c.T1, e.T0, e.T1, -1))
+                        { v.Result = Hit(LogicResult.Contradict); v.Rule = "LR03"; v.Why = $"그 사이 {Cast.GivenOf(who)}은(는) {S.RoomName(e.Room)}을(를) 비웠다{hearsay}"; return v; }
                         if (c.Kind == PropKind.WithPerson && (e.Kind == PropKind.AtPlace) && e.A == c.B && e.Room != c.Room && Overlap(c.T0, c.T1, e.T0, e.T1, -1))
                         { v.Result = Hit(LogicResult.Contradict); v.Rule = "LR03"; v.Why = $"함께 있었다는 {Cast.GivenOf(c.B)}은(는) 그때 {S.RoomName(e.Room)}에 있었다{hearsay}"; return v; }
                         if (e.Kind == PropKind.AtPlace && e.A == who && e.Room == c.Room && Overlap(c.T0, c.T1, e.T0, e.T1)) { v.Result = LogicResult.Support; v.Rule = "LR01"; v.Why = "그 시각 그 자리에 있었던 게 맞다"; return v; }

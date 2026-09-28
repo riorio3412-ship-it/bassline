@@ -207,7 +207,8 @@ namespace BL23.Sim
             // a first reading nobody disputes opens the 심판 as a plaque (the time everyone heard, …)
             foreach (var k in deck.Claims.Where(c => c.Layer == 1 && c.Truth == "true"))
             {
-                var basis = deck.Plates.FirstOrDefault(p => p.True && p.Role == PlateRole.Confirm);
+                // someone heard it (a record such as the hunt's chart is also a Confirm plate, but nobody heard anything from it)
+                var basis = deck.Plates.FirstOrDefault(p => p.True && p.Role == PlateRole.Confirm && p.Witness != null && p.Props.Any(x => x.Kind == PropKind.Heard));
                 if (basis == null) continue;
                 AddPlaque(sim, T, null, k.Text + $" — {Cast.GivenOf(basis.Witness)}이(가) 그 소리를 들었다.", k.Presented, "house");
             }

@@ -47,7 +47,7 @@ namespace BL23.Sim
             var d = new CaseDeck { Incident = inc.Id, Loop = S.Loop, Chapter = S.Chapter, Frozen = S.Clock, FrozenSeq = S.Seq, Source = C.Pack != null ? "pack,legacy" : "legacy" };
             double u = MurderHash.U01(S, "deck-fakes:" + inc.Id); d.FakeTarget = u < 0.25 ? 4 : u < 0.75 ? 5 : 6;
             var cands = new List<Plate>();
-            FeedBody(C, cands); FeedTraces(C, cands); FeedFurniture(C, cands); FeedItems(C, cands); FeedWitness(C, cands); FeedCulpritSeen(C, cands); FeedOffClaim(C, cands); FeedBeats(C, cands); FeedHunt(C, cands); FeedMasque(C, cands); FeedCalls(C, cands); FeedAlibi(C, cands); FeedCoincidence(C, cands); FeedHeld(C, cands);
+            FeedBody(C, cands); FeedTraces(C, cands); FeedFurniture(C, cands); FeedItems(C, cands); FeedWitness(C, cands); FeedCulpritSeen(C, cands); FeedOffClaim(C, cands); FeedBeats(C, cands); FeedHunt(C, cands); FeedMasque(C, cands); FeedDoor(C, cands); FeedCalls(C, cands); FeedAlibi(C, cands); FeedCoincidence(C, cands); FeedHeld(C, cands);
             BuildClaims(C, d, cands);
             LinkPlates(C, d, cands);
             Select(C, d, cands);
@@ -463,6 +463,40 @@ namespace BL23.Sim
             }
         }
 
+        // ---- the house's own evenings (HouseEvents): the house keeps the door of the room it lit for them — who stepped out, when,
+        //      and when they came back. A mask hides a face from the other guests, not from the house that handed it out.
+        static void FeedDoor(CaseFacts C, List<Plate> cands)
+        {
+            var S = C.S; if (S.Gatherings == null) return;
+            var g = S.Gatherings.Where(x => x.Kind != null && x.Kind.StartsWith("house:", StringComparison.Ordinal) && x.Kind != "house:hunt" && x.Kind != "house:phone" && !x.Cancelled && x.Revs.Count > 0
+                                           && C.KillClock >= x.Cur.Start - 10 && C.KillClock <= x.Cur.Start + (HouseEvents.KindOf(x)?.Len ?? 80) + 20)
+                                .OrderBy(x => Math.Abs(x.Cur.Start - C.KillClock)).ThenBy(x => x.Id, StringComparer.Ordinal).FirstOrDefault();
+            if (g == null) return;
+            int room = g.Cur.Room; double end = g.Cur.Start + (HouseEvents.KindOf(g)?.Len ?? 80);
+            var outs = new List<(string who, double left, double back)>();
+            foreach (var e in S.Ledger.Where(e => e.Type == "GatheringLeave" && e.Data == g.Id && e.Actor != null && e.Clock >= C.KillClock - 60 && e.Clock <= C.KillClock + 10).OrderBy(e => e.Seq))
+            {
+                var ret = S.Ledger.FirstOrDefault(r => r.Type == "GatheringReturn" && r.Actor == e.Actor && r.Seq > e.Seq && r.Data != null && r.Data.StartsWith(g.Id + " ", StringComparison.Ordinal));
+                outs.Add((e.Actor, e.Clock, ret?.Clock ?? -1));
+            }
+            if (outs.Count == 0) return;
+            // the victim and the culprit first (the court needs those two lines), the rest in the order they went; four lines at most
+            var shown = outs.OrderBy(o => o.who == C.VictimId || o.who == C.Culprit ? 0 : 1).ThenBy(o => o.left).Take(4).OrderBy(o => o.left).ToList();
+            int more = outs.Select(o => o.who).Distinct().Count() - shown.Select(o => o.who).Distinct().Count();
+            string Line((string who, double left, double back) o) => o.back >= 0 ? $"{G(o.who)} {ClockFmt.AnchorRange(o.left, o.back)}" : $"{G(o.who)} {ClockFmt.Anchor(o.left)} 나간 뒤 끝까지 안 돌아옴";
+            var props = shown.Select(o => new Prop { Kind = PropKind.NotAtPlace, A = o.who, Room = room, T0 = o.left + 1, T1 = o.back >= 0 ? o.back - 1 : Math.Max(end, C.KillClock + 10) }).ToList();
+            var cul = shown.Where(o => o.who == C.Culprit).Select(o => ((string who, double left, double back)?)o).FirstOrDefault();
+            var p = NewPlate(C, "record:door:" + g.Id, PlateKind.Record, cul != null ? PlateRole.Link : PlateRole.Seam, true, "저택의 출입 기록",
+                $"{g.Label} — {S.RoomName(room)}을(를) 잠시 비운 사람: {string.Join(" · ", shown.Select(Line))}{(more > 0 ? $" 외 {TrialSystem.Kor(more)} 명" : "")}", room, shown[0].left, end, props);
+            if (cul != null)
+            {
+                p.Seen = C.Culprit;
+                p.Back = LineBank.FixParticles($"{G(C.Culprit)}은(는) {ClockFmt.Anchor(cul.Value.left)} {S.RoomName(room)}을(를) 나갔다" + (cul.Value.back < 0 || cul.Value.back >= C.KillClock ? $" — {G(C.VictimId)}이(가) 공격당한 건 그 사이다." : "."));
+            }
+            else p.Back = LineBank.FixParticles($"저택의 기록으로는 그 사이 {S.RoomName(room)}을(를) 비운 사람은 이들뿐이다.");
+            cands.Add(p);
+        }
+
         // ---- the telephone night (HouseEvents): the call order the house read out in the morning (everyone knew who would be alone
         //      in the telephone room, and when), and the house's log — a call nobody picked up is a minute by which the victim
         //      was already down, or not where they should have been
@@ -615,7 +649,7 @@ namespace BL23.Sim
             switch (c.Axis)
             {
                 case Axis.Identity: return c.Trick == "Message" ? $"「피로 쓴 글자」 — 정말 {V}이(가) 남긴 말인가" : $"「{V}을(를) 친 사람」 — 누구였나";
-                case Axis.Time: return c.Trick == "Tod" ? $"「{ClockFmt.Vague(c.Presented.T0 + 15)}의 죽음」 — 정말 그 시각이었나" : $"「{ClockFmt.Vague(C.KillClock)}의 소리」 — 그 시각, 무슨 일이 있었나";
+                case Axis.Time: return c.Trick == "Tod" ? $"「{ClockFmt.Vague(c.Presented.T0 + 15)}의 죽음」 — 정말 그 시각이었나" : cands.Any(p => p.True && p.Props.Any(x => x.Kind == PropKind.Heard)) ? $"「{ClockFmt.Vague(C.KillClock)}의 소리」 — 그 시각, 무슨 일이 있었나" : $"「{ClockFmt.Vague(C.KillClock)}」 — 그 시각, 무슨 일이 있었나";
                 case Axis.Access: return $"「잠긴 {S.RoomName(C.FoundRoom)}」 — 누가, 어떻게 드나들었나";
                 case Axis.Means: return $"「시신 옆의 흉기」 — 정말 그것으로 쳤나";
                 case Axis.Cause: return $"「{V}의 죽음」 — 정말 {(c.Trick == "Natural" ? "병" : c.Trick == "Suicide" ? "스스로" : "사고")}였나";
@@ -745,7 +779,10 @@ namespace BL23.Sim
             Take(trues.Where(p => p.Role == PlateRole.Clear).OrderBy(p => p.Root, StringComparer.Ordinal).FirstOrDefault(), "clear");
             // the culprit's alibi must be breakable: one plate from a witness on the where-lie's own list, when none is in yet
             var whereLie = C.Pack?.Lies?.FirstOrDefault(l => l.Topic == "where");
-            bool BreaksWhere(Plate p) => whereLie != null && p.True && p.Kind == PlateKind.Witness && p.Seen == C.Culprit && p.Witness != null && whereLie.BrokenBy.Contains("witness:" + p.Witness);
+            var story = C.Pack?.Story;
+            bool BreaksWhere(Plate p) => whereLie != null && p.True
+                && ((p.Kind == PlateKind.Witness && p.Seen == C.Culprit && p.Witness != null && whereLie.BrokenBy.Contains("witness:" + p.Witness))
+                    || (story != null && story.ClaimRoom >= 0 && p.Props.Any(x => x.Kind == PropKind.NotAtPlace && x.A == C.Culprit && x.Room == story.ClaimRoom && x.T0 <= story.ClaimTo - 1 && x.T1 >= story.ClaimFrom + 1)));
             if (whereLie != null && !all.Any(BreaksWhere))
                 Take(trues.Where(BreaksWhere).OrderBy(p => p.Props.Any(x => x.Kind == PropKind.AtPlace) ? 0 : 1).ThenBy(p => Math.Abs(p.T0 - C.KillClock)).ThenBy(p => p.Root, StringComparer.Ordinal).FirstOrDefault(), "lie");
             // whoever had the scapegoat elsewhere while the culprit says they saw them heading for the scene (the lie's breaker)
