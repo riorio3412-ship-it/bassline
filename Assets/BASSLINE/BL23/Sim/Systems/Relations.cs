@@ -106,8 +106,8 @@ namespace BL23.Sim
                 total -= (r.Attach * 0.9f + Math.Max(0, r.Like) * 0.6f + (r.Tags.Contains("lover") ? 0.6f : 0) + (r.Tags.Contains("family") ? 0.8f : 0));
                 if (total > bestV) { bestV = total; bestT = t.Id; motive = v > conv ? (r.Grudge > r.Fear ? "grudge" : r.Fear > r.Jealous ? "fear" : "jealousy") : "wish"; }
             }
-            float inhibit = c.P.Morality * 0.85f + c.P.Fearfulness * 0.1f + c.Empathy / 100f * 0.15f;
-            if (S.Flags.TryGetValue("inh:" + a.Id, out var inh)) inhibit = Math.Max(0.05f, inhibit + (float)inh);   // this loop's state of mind: who holds, who cracks, differs each time
+            // restraint (morality, fear, empathy, this loop's state of mind) plus the wall nobody has a reason to cross yet (Conscience)
+            float inhibit = Conscience.Inhibit(S, a);
             return (bestV - inhibit, bestT, motive);
         }
 

@@ -29,6 +29,7 @@ public static partial class Program
         if (mode == "deckdump") return DeckDump(args);     // DebateDump.cs: the 은판 deck of the first 심판
         if (mode == "deckgate") return DeckGate(args);     // DebateDump.cs: decks over several seeds
         if (mode == "debate") return DebateRun(args);      // DebateDump.cs: the debate 심판 played headless, as a transcript
+        if (mode == "premise") return PremiseTest(args);   // PremiseTest.cs: the invitation, the pact, the wall and the house's pushes, as a transcript
         Console.WriteLine("unknown mode " + mode); return 1;
     }
 

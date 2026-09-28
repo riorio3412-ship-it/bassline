@@ -18,12 +18,8 @@ namespace BL23.Sim
     {
         static readonly string[] Legacy = { "wish", "escape", "grudge", "fear", "jealousy" };
 
-        static float Inhibit(GameState S, Actor a)
-        {
-            var c = a.Def; float inh = c.P.Morality * 0.85f + c.P.Fearfulness * 0.1f + c.Empathy / 100f * 0.15f;
-            if (S.Flags.TryGetValue("inh:" + a.Id, out var d)) inh = Math.Max(0.05f, inh + (float)d);
-            return inh;
-        }
+        /// <summary>Restraint plus the wall (Conscience) — the same inhibition the old planner's pressure subtracts.</summary>
+        static float Inhibit(GameState S, Actor a) => Conscience.Inhibit(S, a);
         /// <summary>Strong bonds block (the old planner's rule): love, attachment, family.</summary>
         static float Block(GameState S, string a, string t)
         {

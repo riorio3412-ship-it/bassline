@@ -28,7 +28,15 @@ namespace BL23.Sim
             if (S.Phase != Phase.Daily) return;
             bool death = S.Incidents.Values.Any(i => i.Loop == S.Loop && i.Chapter == S.Chapter);
             if (death || S.Clock - S.Ch.ChapterStartClock < Grace || S.Survivors <= S.FloorLocked) return;
-            int lv = Level(S); if (lv >= 4) return;
+            Tighten(sim, "y_hunger", null);
+        }
+
+        /// <summary>One more level of hunger: a room swallowed, everyone more strained, the wall a little thinner. The morning
+        /// check calls it; so does the house when its patience runs out (HousePush).</summary>
+        public static bool Tighten(Simulation sim, string announceKey, string rule)
+        {
+            var S = sim.S;
+            int lv = Level(S); if (lv >= 4) return false;
             lv++; S.Flags[$"hunger:{S.Loop}:{S.Chapter}"] = lv;
             var rng = S.R(Stream.ChapterRule);
             // a room is swallowed: somewhere people liked to be, never a room life depends on
@@ -55,8 +63,10 @@ namespace BL23.Sim
                 a.Needs.Fear = MathX.Clamp01(a.Needs.Fear + 0.05f * lv);
                 a.Needs.Anger = MathX.Clamp01(a.Needs.Anger + (a.Def.P.Aggression > 0.5f ? 0.05f * lv : 0));
             }
-            sim.Announce("y_hunger", new Dictionary<string, string> { { "place", eaten != null ? eaten.Name : "어딘가" }, { "n", lv.ToString() } });
+            Conscience.Erode(S, null, 0.03f, "hunger" + lv);
+            sim.Announce(announceKey, new Dictionary<string, string> { { "place", eaten != null ? eaten.Name : "어딘가" }, { "n", lv.ToString() } }, rule);
             S.Dev($"HUNGER level {lv} swallowed {eaten?.Name}");
+            return true;
         }
 
         /// <summary>Meals leave people hungrier while the house is hungry.</summary>

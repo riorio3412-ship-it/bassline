@@ -136,6 +136,7 @@ namespace BL23.Sim
             S.ChapterStartId = $"L{S.Loop}C{S.Chapter}";
             int n = S.Survivors;
             S.Ch = new ChapterState { StartN = n, ChapterStartClock = S.Clock };
+            Conscience.OnChapter(this);
             S.Ch.VictimCap = n >= 7 ? 2 : (n >= 4 ? 1 : 0);
             Rules.SelectForChapter(this);
             if (S.RuleActive("CH21") && n >= 8) S.Ch.VictimCap = 3;

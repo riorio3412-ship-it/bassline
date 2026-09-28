@@ -363,7 +363,8 @@ namespace BL23.Sim
                 n.Anger = MathX.Clamp01(n.Anger - 1f / 300f);
                 if (a.Wet && S.Clock > a.WetUntil) a.Wet = false;
             }
-            if (mod == 7 * 60) { Announce("y_morning", null); Hunger.Morning(this); }
+            if (mod == 7 * 60) { Announce("y_morning", null); Hunger.Morning(this); HousePush.Bell(this, false); }
+            if (mod == 21 * 60) HousePush.Bell(this, true);
             if (mod == 22 * 60) Announce("y_night", null);
             // the meal bell: breakfast and dinner are shared at one table (lunch is taken when and where one likes)
             if (S.Phase == Phase.Daily && (mod == MealStart[0] || mod == MealStart[2]) && S.Layout.First(RoomType.Dining) != null)

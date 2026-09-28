@@ -352,6 +352,7 @@ namespace BL23.Sim
             if (f == "hint" || f == "contract" || f == "secret") { if (npc != null) PK.Facts.Add(f + ":" + npc); return; }
             if (f.StartsWith("knot:")) { CastWeb.RevealKnot(S, f.Substring(5), Cast.Player); return; }
             if (f.StartsWith("flag:")) { S.Flags[f.Substring(5)] = S.Day; return; }
+            if (f.StartsWith("mend:")) { foreach (var id in f.Substring(5).Split(',')) Conscience.Mend(S, id, 0.03f, "pact-remind"); return; }
             PK.Facts.Add(f);
         }
 

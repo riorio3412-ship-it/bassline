@@ -407,7 +407,7 @@ namespace BL23.Game
             var diners = S.LivingNpcs.Where(x => x.Room == room.Id && x.Status == ActorStatus.Active && (x.Anim == Anim.Eat || x.Pose == BL23.Sim.Pose.Sit) && x.TalkingTo == null).OrderBy(x => x.Id).Select(x => x.Id).ToList();
             if (diners.Count < 3) return;
             S.Flags[key] = S.Clock;
-            Cine.TableTalk(diners.Take(5).ToList(), meal);
+            Cine.TableTalk(diners.Take(7).ToList(), meal);   // up to seven at the table: the long table scenes (pact, the house's pushes)
         }
         void UpdateMusic()
         {

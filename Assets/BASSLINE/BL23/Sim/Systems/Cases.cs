@@ -306,6 +306,7 @@ namespace BL23.Sim
                 if (!force && !Enough(S, inc)) { Gather(sim, inc, room); continue; }   // the three-witness rule
                 inc.Confirmed = true; inc.ConfirmClock = S.Clock; if (inc.FoundRoom < 0) inc.FoundRoom = room; if (!inc.Discovered) { inc.Discovered = true; inc.DiscoverClock = S.Clock; }
                 S.Log("HouseToll", null, body.Id, room: room);
+                Conscience.OnDeath(sim, inc);
                 sim.Announce("y_body", new Dictionary<string, string> { { "victim", Cast.NameOf(body.Id) }, { "place", S.RoomName(room) } });
                 SetPieces.OnConfirm(sim, body, room);
                 foreach (var a in S.Actors.Values.Where(a => a.Alive))

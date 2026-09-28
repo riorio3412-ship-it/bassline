@@ -53,6 +53,7 @@ namespace BL23.Sim
                 foreach (var kv in T.Votes.Where(kv => kv.Value == a.Id && kv.Key != a.Id)) if (!(set.Correct && a.Id == culprit)) Relations.Change(S, a.Id, kv.Key, grudge: 0.12f, like: -0.08f, memory: "심판에서 나에게 표를 던졌다");
             }
             if (set.Executed == Cast.Player || set.Escaped == Cast.Player) S.Flags["player_out"] = S.Clock;
+            Conscience.OnSettlement(sim, set);
             sim.SetPhase(Phase.Verdict);
         }
 

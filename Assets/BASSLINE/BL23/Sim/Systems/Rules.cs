@@ -73,6 +73,24 @@ namespace BL23.Sim
             foreach (var inst in S.Ch.Rules) { sim.Announce("y_rule_" + inst.Rule, RuleSlots(S, inst), inst.Rule); inst.Announced = true; S.Emit(GameEventType.RuleStart, data: inst.Rule, text: inst.Name + " — " + inst.Desc); }
         }
 
+        /// <summary>
+        /// The house adds a rule mid-chapter (HousePush): the same instance, setup and notice as at chapter start, after the
+        /// house's own introduction. A rule whose times would already be past today is set on the next day.
+        /// </summary>
+        public static RuleInstance Impose(Simulation sim, string id, string introKey)
+        {
+            var S = sim.S; var r = Catalog.FirstOrDefault(x => x.Id == id); if (r == null || S.RuleActive(id)) return null;
+            var inst = new RuleInstance { Id = S.NewId("rule"), Rule = r.Id, Chapter = S.Chapter, Name = r.Name, Desc = r.Desc, Major = r.Major, Kind = r.Kind };
+            S.Ch.Rules.Add(inst); S.Flags["rulehist:" + r.Id] = S.Chapter; S.Flags["ruleimposed:" + r.Id] = S.Clock;
+            double today = Math.Floor(S.Clock / 1440) * 1440;
+            Setup(sim, inst, S.R(Stream.ChapterRule), S.Clock - today >= 13 * 60 ? today + 1440 : today);
+            if (introKey != null) sim.Announce(introKey, new Dictionary<string, string> { { "rule", r.Name } });
+            sim.Announce("y_rule_" + inst.Rule, RuleSlots(S, inst), inst.Rule); inst.Announced = true;
+            S.Emit(GameEventType.RuleStart, data: inst.Rule, text: inst.Name + " — " + inst.Desc);
+            S.Log("RuleImposed", Cast.Butler, data: inst.Rule);
+            return inst;
+        }
+
         static Dictionary<string, string> RuleSlots(GameState S, RuleInstance r)
         {
             var d = new Dictionary<string, string>();
@@ -83,10 +101,10 @@ namespace BL23.Sim
             return d;
         }
 
-        static void Setup(Simulation sim, RuleInstance r, Rng rng)
+        static void Setup(Simulation sim, RuleInstance r, Rng rng, double day = -1)
         {
             var S = sim.S; var living = S.Living.Select(a => a.Id).ToList();
-            double day0 = Math.Floor(S.Clock / 1440) * 1440;
+            double day0 = day >= 0 ? day : Math.Floor(S.Clock / 1440) * 1440;
             switch (r.Rule)
             {
                 case "CH02":
